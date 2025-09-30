@@ -1,4 +1,3 @@
-import React from 'react'
 import HomepageCarousel from '@/components/Carousel/HomepageCarousel'
 import HeaderHomepage from '@/components/Layout/HeaderHomepage'
 import PromptFeatures from '@/components/Introduction/PromptFeatures'

@@ -1,4 +1,3 @@
-import React from 'react'
 import SiderBar from '../ProfileUser/SiderBar'
 import PromptStorage from '../ProfileUser/PromptStorage'
 import HeaderHomepage from '../Layout/HeaderHomepage'

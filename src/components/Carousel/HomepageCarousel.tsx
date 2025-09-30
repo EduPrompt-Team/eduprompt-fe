@@ -55,7 +55,7 @@ const HomepageCarousel: React.FC = () => {
         className="flex transition-transform duration-500 ease-in-out h-full"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
-        {slides.map((slide, index) => (
+        {slides.map((slide) => (
           <div key={slide.id} className="w-full h-full flex-shrink-0 relative">
             {/* Background Image */}
             <div 

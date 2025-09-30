@@ -1,4 +1,3 @@
-import React from 'react'
 import SiderBar from '../ProfileUser/SiderBar'
 import HeaderHomepage from '../Layout/HeaderHomepage'
 import FavoritesPrompt from '../ProfileUser/FavoritesPrompt'

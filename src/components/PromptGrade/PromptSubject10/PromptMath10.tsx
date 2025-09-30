@@ -1,4 +1,3 @@
-import React from 'react'
 import PromptGrade10Math from '../../Introduction/PromptGrade10Math'
 import HeaderGrade10Math from '../../Layout/HeaderGrade10Math'
 
