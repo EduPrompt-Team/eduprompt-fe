@@ -11,9 +11,9 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
 const SiderBarMyprofile: React.FC = () => {
   const [collapsed, setCollapsed] = React.useState(false)
   return (
-    <aside className={`${collapsed ? 'w-16' : 'w-72'} shrink-0 bg-[#1a1a2d] border-r border-[#2f2f4a] min-h-screen p-4 transition-[width] duration-200`}>
+    <aside className={`${collapsed ? 'w-16' : 'w-72'} shrink-0 bg-[#1a1a2d] border-r border-[#2f2f4a] p-4 transition-[width] duration-200 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto z-20`}>
       {/* Toggle */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 ">
         <button
           onClick={() => setCollapsed((v) => !v)}
           className="h-8 w-8 rounded-lg border border-[#2f2f4a] text-neutral-300 hover:text-white hover:bg-[#2a2a44]"
@@ -46,24 +46,24 @@ const SiderBarMyprofile: React.FC = () => {
 
       {/* Nav */}
       <nav className="space-y-2">
-        <NavLink to="/profile" className={navItemClass} end>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+        <NavLink to="/profile" className={(args) => [navItemClass(args), 'w-full', collapsed ? 'justify-center px-0' : ''].join(' ')} end>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 shrink-0">
             <path d="M12 12a5 5 0 100-10 5 5 0 000 10z" />
             <path d="M2 20a10 10 0 1120 0v1H2v-1z" />
           </svg>
           {!collapsed && <span>Thông tin cá nhân</span>}
         </NavLink>
 
-        <NavLink to="/mystorage" className={navItemClass}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+        <NavLink to="/mystorage" className={(args) => [navItemClass(args), 'w-full', collapsed ? 'justify-center px-0' : ''].join(' ')}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 shrink-0">
             <path d="M4 5h14v2H4zM4 9h14v2H4zM4 13h10v2H4z" />
             <path d="M20 7h-2v12h2a2 2 0 002-2V9a2 2 0 00-2-2z" />
           </svg>
           {!collapsed && <span>Kho Prompt</span>}
         </NavLink>
 
-        <NavLink to="/profile/favorites" className={navItemClass}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+        <NavLink to="/myfavorites" className={(args) => [navItemClass(args), 'w-full', collapsed ? 'justify-center px-0' : ''].join(' ')}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 shrink-0">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.5C11.09 5.01 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
           </svg>
           {!collapsed && <span>Prompt yêu thích</span>}

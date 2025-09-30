@@ -162,7 +162,7 @@ const HeaderHomepage: React.FC = () => {
                 <ShoppingBag className="h-5 w-5" />
                 <span>Kho Prompt</span>
               </button>
-              <button onClick={() => { setMenuOpen(false); navigate('/profile/favorites') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+              <button onClick={() => { setMenuOpen(false); navigate('/myfavorites') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <Heart className="h-5 w-5" />
                 <span>Prompt yêu thích</span>
               </button>

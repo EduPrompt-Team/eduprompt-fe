@@ -1,12 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '../ui/button'
 import { Heart, Download, Eye, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const PromptGrade10MathDetail: React.FC = () => {
   const navigate = useNavigate()
+  const [isFavorite, setIsFavorite] = useState(false)
   const handleLibrary = () => {
     navigate('/mystorage')
+  }
+  const handleToggleFavorite = () => {
+    setIsFavorite((prev) => !prev)
   }
   // Sample data for the math prompts
   const mathPrompts = [
@@ -193,15 +197,29 @@ const PromptGrade10MathDetail: React.FC = () => {
 
             {/* Pricing */}
             <div className="space-y-2">
-              <div className="text-2xl font-bold text-green-400">Miễn phí</div>
+              <div className="text-2xl font-bold text-green-400">500.000 VNĐ</div>
               <button className="text-blue-400 hover:text-blue-300 text-sm">
                 Tôi nhận được gì khi tải xuống prompt?
               </button>
             </div>
 
             {/* Action Button */}
-            <Button onClick={handleLibrary} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-3 rounded-lg">
+            <Button 
+              onClick={handleLibrary} 
+              className="w-full text-white font-semibold py-3 rounded-lg 
+              bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-500 hover:to-sky-400 
+              shadow-lg shadow-sky-500/20 hover:shadow-sky-500/40 
+              transition-all duration-300 ease-out transform hover:-translate-y-0.5 active:translate-y-0 
+              focus:outline-none focus:ring-2 focus:ring-sky-400/60">
               Thêm vào Thư viện
+            </Button>
+            <Button 
+              onClick={handleToggleFavorite} 
+              aria-pressed={isFavorite} 
+              className={`w-full ${isFavorite ? 'bg-pink-600 hover:bg-pink-700' : 'bg-[#2a2a44] hover:bg-[#3a3a54]'} text-white font-semibold py-3 rounded-lg mt-2 flex items-center justify-center`}
+            >
+              <Heart className="w-4 h-4 mr-2 text-white" fill={isFavorite ? 'currentColor' : 'none'} />
+              Thêm vào yêu thích
             </Button>
 
             {/* Terms */}

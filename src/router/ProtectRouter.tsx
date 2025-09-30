@@ -9,6 +9,9 @@ import PromptMath10 from '@/components/PromptGrade/PromptSubject10/PromptMath10'
 import PromptMath10Detail from '@/components/PromptGrade/PromptSubject10/PromptSubject10Details/PromptMath10Detail'
 import MyProfilePage from '@/components/Page/MyProfilePage'
 import PromptBarStoragePage from '@/components/Page/PromptBarStoragePage'
+import FavoritesPromptPage from '@/components/Page/FavoritesPromptPage'
+import PaymentPage from '@/components/Page/PaymentPage'
+import PromptTemplate10Chuong1Page from '@/components/Page/PromptTemplate10Chuong1Page'
 
 export const router = createBrowserRouter([
 	{ path: '/', element: <Navigate to="/home" replace /> },
@@ -21,6 +24,10 @@ export const router = createBrowserRouter([
 	{ path: '/grade10/math/detail', element: <PromptMath10Detail /> },
 	{ path: '/myprofile', element: <MyProfilePage /> },
 	{ path: '/mystorage', element: <PromptBarStoragePage /> },
+	{ path: '/myfavorites', element: <FavoritesPromptPage /> },
+	{ path: '/profile', element: <MyProfilePage /> },
+	{ path: '/payment', element: <PaymentPage /> },
+	{ path: '/grade10/math/detail/chuong1', element: <PromptTemplate10Chuong1Page /> },
 ])
 
 export default router
