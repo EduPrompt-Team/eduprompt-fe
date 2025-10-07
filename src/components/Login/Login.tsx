@@ -1,5 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
+import { api, setTokens } from '@/lib/api'
 
 function GoogleIcon() {
 	return (
@@ -14,6 +16,13 @@ function GoogleIcon() {
 
 const Login: React.FC = () => {
 	const navigate = useNavigate()
+
+  useEffect(() => {
+    // Debug FE env and origin to troubleshoot Google client configuration
+    // @ts-ignore
+    console.log('VITE_GOOGLE_CLIENT_ID =', import.meta.env.VITE_GOOGLE_CLIENT_ID)
+    console.log('ORIGIN =', location.origin)
+  }, [])
 
 	const handleContinue = () => {
 		navigate('/home')
@@ -30,10 +39,22 @@ const Login: React.FC = () => {
                     <p className="text-neutral-400 text-center text-sm slide-up anim-delay-200">Nền tảng hỗ trợ tìm kiếm prompt chuẩn AI dành cho giáo viên THPT</p>
                 </div>
                 <div className="p-7 space-y-5">
-                    <button className="w-full justify-center rounded-xl bg-white text-neutral-900 hover:bg-white/95 border border-white/30 shadow-sm h-11 inline-flex items-center slide-up anim-delay-200 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-sm">
-                        <GoogleIcon />
-                        <span className="ml-2 font-medium">Tiếp tục với Google</span>
-                    </button>
+                    <div className="w-full h-11 flex items-center justify-center slide-up anim-delay-200">
+                        <GoogleLogin
+                          onSuccess={async (res) => {
+                            try {
+                              const idToken = (res as any).credential
+                              const { data } = await api.post('/api/auth/google-login', { idToken })
+                              setTokens(data.accessToken, data.refreshToken)
+                              navigate('/home', { replace: true })
+                            } catch (e) {
+                              console.error(e)
+                              alert('Đăng nhập Google thất bại')
+                            }
+                          }}
+                          onError={() => alert('Google Login lỗi')}
+                        />
+                    </div>
                     <div className="flex items-center gap-4 px-2 slide-up anim-delay-300">
                         <div className="h-px flex-1 bg-neutral-700/60" />
                         <span className="text-xs text-neutral-500">hoặc tiếp tục với email</span>
