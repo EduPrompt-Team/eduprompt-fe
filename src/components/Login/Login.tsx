@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api, setTokens, fetchCurrentUser, setRemember } from '@/lib/api'
 import { GoogleLogin } from '@react-oauth/google'
-import { api, setTokens } from '@/lib/api'
 
 function GoogleIcon() {
 	return (
@@ -16,6 +16,10 @@ function GoogleIcon() {
 
 const Login: React.FC = () => {
 	const navigate = useNavigate()
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [submitting, setSubmitting] = useState(false)
+    const [remember, setRememberState] = useState(false)
 
   useEffect(() => {
     // Debug FE env and origin to troubleshoot Google client configuration
@@ -23,10 +27,26 @@ const Login: React.FC = () => {
     console.log('VITE_GOOGLE_CLIENT_ID =', import.meta.env.VITE_GOOGLE_CLIENT_ID)
     console.log('ORIGIN =', location.origin)
   }, [])
-
-	const handleContinue = () => {
-		navigate('/home')
-	}
+    const handleEmailPasswordLogin = async () => {
+        if (!email || !password) {
+            alert('Vui lòng nhập email và mật khẩu')
+            return
+        }
+        setSubmitting(true)
+        setRemember(remember)
+        try {
+            const { data } = await api.post('/api/auth/login', { email, password })
+            // Backend trả về TokenResponseDto { accessToken, refreshToken }
+            setTokens(data.accessToken, data.refreshToken)
+            await fetchCurrentUser()
+            navigate('/home', { replace: true })
+        } catch (e: any) {
+            const message = e?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
+            alert(message)
+        } finally {
+            setSubmitting(false)
+        }
+    }
 
 	return (
     <div className="min-h-screen bg-[#1a1a2d] text-neutral-100 flex items-start justify-center px-4 pt-6 md:pt-8">
@@ -39,13 +59,14 @@ const Login: React.FC = () => {
                     <p className="text-neutral-400 text-center text-sm slide-up anim-delay-200">Nền tảng hỗ trợ tìm kiếm prompt chuẩn AI dành cho giáo viên THPT</p>
                 </div>
                 <div className="p-7 space-y-5">
-                    <div className="w-full h-11 flex items-center justify-center slide-up anim-delay-200">
+                    <div className="w-full h-11 flex items-center justify-center slide-up anim-delay-150">
                         <GoogleLogin
                           onSuccess={async (res) => {
                             try {
                               const idToken = (res as any).credential
                               const { data } = await api.post('/api/auth/google-login', { idToken })
                               setTokens(data.accessToken, data.refreshToken)
+                              await fetchCurrentUser()
                               navigate('/home', { replace: true })
                             } catch (e) {
                               console.error(e)
@@ -55,25 +76,42 @@ const Login: React.FC = () => {
                           onError={() => alert('Google Login lỗi')}
                         />
                     </div>
-                    <div className="flex items-center gap-4 px-2 slide-up anim-delay-300">
+                    <div className="flex items-center gap-4 px-2 slide-up anim-delay-200">
                         <div className="h-px flex-1 bg-neutral-700/60" />
                         <span className="text-xs text-neutral-500">hoặc tiếp tục với email</span>
                         <div className="h-px flex-1 bg-neutral-700/60" />
-					</div>
-                    <div className="grid gap-2 slide-up anim-delay-300">
+                    </div>
+                    <div className="grid gap-2 slide-up anim-delay-250">
                         <label className="text-sm text-neutral-300">Địa chỉ email</label>
-                        <input type="email" placeholder="email@vidu.com" className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600" />
-					</div>
+                        <input
+                            type="email"
+                            placeholder="email@vidu.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600"
+                        />
+                    </div>
+                    <div className="grid gap-2 slide-up anim-delay-300">
+                        <label className="text-sm text-neutral-300">Mật khẩu</label>
+                        <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600"
+                        />
+                    </div>
                 </div>
                 <div className="px-7 pb-7 pt-0 flex flex-col items-stretch gap-4">
                     <button 
-                        onClick={handleContinue}
+                        onClick={handleEmailPasswordLogin}
                         className="w-full h-11 rounded-xl bg-gradient-to-r from-rose-400 to-orange-400 text-neutral-900 font-semibold hover:opacity-90 slide-up anim-delay-300 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-sm hover:from-rose-500 hover:to-orange-500"
+                        disabled={submitting}
                     >
-                        Tiếp tục
+                        {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
                     </button>
                     <div className="flex items-start gap-2 text-xs text-neutral-400 slide-up anim-delay-400">
-                        <input id="updates" type="checkbox" className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-rose-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-600" />
+                        <input id="updates" type="checkbox" checked={remember} onChange={(e) => setRememberState(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-rose-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-600" />
                         <label htmlFor="updates" className="leading-relaxed">
                           Ghi nhớ tài khoản
                         </label>

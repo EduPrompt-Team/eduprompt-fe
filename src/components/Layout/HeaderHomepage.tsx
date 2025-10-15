@@ -1,4 +1,5 @@
 import React from 'react'
+import { getCurrentUser, fetchCurrentUser, clearTokens, setCurrentUser } from '@/lib/api'
 import { User, ShoppingBag, Heart, ChevronDown } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
@@ -11,6 +12,14 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
 const HeaderHomepage: React.FC = () => {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [user, setUser] = React.useState<any | null>(() => getCurrentUser())
+
+  React.useEffect(() => {
+    // Try hydrate user on first load if we already have token
+    if (!user && localStorage.getItem('accessToken')) {
+      fetchCurrentUser().then(setUser).catch(() => setCurrentUser(null))
+    }
+  }, [])
 
   const handleLogin = () => {
     navigate('/login')
@@ -107,12 +116,14 @@ const HeaderHomepage: React.FC = () => {
 
         {/* Right: actions */}
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={handleLogin}
-            className="hidden md:inline-flex h-10 items-center justify-center rounded-full bg-white text-[#23233a] px-4 text-sm font-semibold hover:bg-white/90"
-          >
-            Đăng nhập
-          </button>
+          {!user && (
+            <button
+              onClick={handleLogin}
+              className="hidden md:inline-flex h-10 items-center justify-center rounded-full bg-white text-[#23233a] px-4 text-sm font-semibold hover:bg-white/90"
+            >
+              Đăng nhập
+            </button>
+          )}
 
         <button
           type="button"
@@ -152,7 +163,9 @@ const HeaderHomepage: React.FC = () => {
 
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-[#2f2f4a] bg-[#23233a] shadow-xl p-2 z-50">
-              <button onClick={() => { setMenuOpen(false); navigate('/profile') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+              {user ? (
+                <>
+                <button onClick={() => { setMenuOpen(false); navigate('/profile') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <User className="h-5 w-5" />
                 <span>Thông tin cá nhân</span>
               </button>
@@ -164,6 +177,15 @@ const HeaderHomepage: React.FC = () => {
                 <Heart className="h-5 w-5" />
                 <span>Prompt yêu thích</span>
               </button>
+              <button onClick={() => { clearTokens(); setCurrentUser(null); setUser(null); setMenuOpen(false); navigate('/') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                <span>Đăng xuất</span>
+              </button>
+              </>
+              ) : (
+                <button onClick={() => { setMenuOpen(false); handleLogin() }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                  <span>Đăng nhập</span>
+                </button>
+              )}
               
             </div>
           )}
