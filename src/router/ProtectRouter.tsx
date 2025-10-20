@@ -11,6 +11,13 @@ import PromptBarStoragePage from '@/components/Page/PromptBarStoragePage'
 import FavoritesPromptPage from '@/components/Page/FavoritesPromptPage'
 import PaymentPage from '@/components/Page/PaymentPage'
 import PromptTemplate10Chuong1Page from '@/components/Page/PromptTemplate10Chuong1Page'
+import ShoppingCartPage from '@/components/Page/ShoppingCartPage'
+import CheckoutPage from '@/components/Page/CheckoutPage'
+import OrderConfirmationPage from '@/components/Page/OrderConfirmationPage'
+import OrderHistoryPage from '@/components/Page/OrderHistoryPage'
+import WalletPage from '@/components/Page/WalletPage'
+import PaymentFlowDemo from '@/components/Demo/PaymentFlowDemo'
+import PackageDetailPage from '@/components/Page/PackageDetailPage'
 
 export const router = createBrowserRouter([
 	{ path: '/', element: <Navigate to="/home" replace /> },
@@ -27,6 +34,16 @@ export const router = createBrowserRouter([
 	{ path: '/profile', element: <MyProfilePage /> },
 	{ path: '/payment', element: <PaymentPage /> },
 	{ path: '/grade10/math/detail/chuong1', element: <PromptTemplate10Chuong1Page /> },
+	// Shopping Cart & Checkout Flow
+	{ path: '/cart', element: <ShoppingCartPage /> },
+	{ path: '/checkout', element: <CheckoutPage /> },
+	{ path: '/order-confirmation', element: <OrderConfirmationPage /> },
+	{ path: '/order-history', element: <OrderHistoryPage /> },
+	{ path: '/wallet', element: <WalletPage /> },
+	// Demo & Testing
+	{ path: '/payment-demo', element: <PaymentFlowDemo /> },
+	// Package Details
+	{ path: '/package/:id', element: <PackageDetailPage /> },
 ])
 
 export default router
