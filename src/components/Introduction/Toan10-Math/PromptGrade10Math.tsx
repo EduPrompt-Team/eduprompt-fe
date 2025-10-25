@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 const PromptGrade10List: React.FC = () => {
     const navigate = useNavigate()
     const handleMath10Detail = () => navigate('/grade10/math/detail')
+    const handleMath10DetailChuong2 = () => navigate('/grade10/math/detail2')
 
 
   const features = [
@@ -35,7 +36,8 @@ const PromptGrade10List: React.FC = () => {
         "Bất phương trình bậc nhất 2 ẩn",
         "Hệ bất phương trình bậc nhất 2 ẩn",
         "Bài Tập Cuối Chương 2"
-      ]
+      ],
+      onClick: handleMath10DetailChuong2
     },
     {
       id: 3,

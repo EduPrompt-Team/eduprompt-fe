@@ -1,6 +1,6 @@
-import SiderBar from '../ProfileUser/SiderBar'
-import HeaderHomepage from '../Layout/HeaderHomepage'
-import PromptTemplate10Chuong1 from '../Introduction/PromptTemplate10Chuong1'
+import SiderBar from '../../ProfileUser/SiderBar'
+import HeaderHomepage from '../../Layout/HeaderHomepage'
+import PromptTemplate10Chuong1 from '../../Introduction/Toan10-Math/PromptTemplate10Chuong1'
 
 const PromptTemplate10Chuong1Page = () => {
   return (

@@ -1,6 +1,6 @@
 import React from 'react'
 
-const PromptTemplate10Chuong1: React.FC = () => {
+const PromptTemplate10Chuong2: React.FC = () => {
   const prompt = `Vai trò: Bạn là một giáo viên THPT, có chuyên môn trong việc thiết kế giáo án và tài liệu dạy học.
 
 Nhiệm vụ: Dựa trên các thông tin đầu vào dưới đây, hãy tạo ra một bộ tài liệu hoàn chỉnh gồm 3 phần bắt buộc với tiêu đề được giữ nguyên: PHẦN 1: GIÁO ÁN HỌC TẬP; PHẦN 2: TÀI LIỆU HỖ TRỢ; PHẦN 3: ĐỀ THI.
@@ -923,7 +923,7 @@ Nếu hình thức là HỖN HỢP, phải phân tách rõ ràng hai phần tr�
   )
 }
 
-export default PromptTemplate10Chuong1
+export default PromptTemplate10Chuong2
 
 
 

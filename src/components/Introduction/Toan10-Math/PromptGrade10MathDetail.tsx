@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Button } from '../ui/button'
+import { Button } from '../../ui/button'
 import { Heart, Download, Eye, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 

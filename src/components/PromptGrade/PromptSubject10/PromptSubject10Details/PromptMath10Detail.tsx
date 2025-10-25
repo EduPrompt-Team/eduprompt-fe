@@ -1,5 +1,5 @@
 import React from 'react'
-import PromptGrade10MathDetail from '../../../Introduction/PromptGrade10MathDetail'
+import PromptGrade10MathDetail from '../../../Introduction/Toan10-Math/PromptGrade10MathDetail'
 import HeaderHomepage from '@/components/Layout/HeaderHomepage'
 
 const PromptMath10Detail: React.FC = () => {

@@ -1,4 +1,4 @@
-import PromptGrade10Math from '../../Introduction/PromptGrade10Math'
+import PromptGrade10Math from '../../Introduction/Toan10-Math/PromptGrade10Math'
 import HeaderGrade10Math from '../../Layout/HeaderGrade10Math'
 
 const PromptMath10 = () => {
