@@ -1,23 +1,41 @@
 import React from 'react'
+import { fetchCurrentUser, getCurrentUser } from '@/lib/api'
 
 type UserProfile = {
-  full_name: string
+  fullName: string
   email: string
-  phone: string
-  profile_url: string
-  created_date: string
-  updated_date: string
+  phone?: string
+  profileUrl?: string
+  createdDate?: string
+  updatedDate?: string
 }
 
 const MyProfile: React.FC = () => {
-  const [profile] = React.useState<UserProfile>({
-    full_name: 'Nguyễn Bắc Hùng',
-    email: 'Hung@gmail.com',
-    phone: '+84 912 345 678',
-    profile_url: new URL('../../assets/Image/FuckBoy.jpg', import.meta.url).href,
-    created_date: '2025-09-01 10:15',
-    updated_date: '2025-09-29 18:42',
+  const [profile, setProfile] = React.useState<UserProfile | null>(() => {
+    const cached = getCurrentUser();
+    if (!cached) return null;
+    return {
+      fullName: cached.fullName ?? cached.full_name ?? '',
+      email: cached.email ?? '',
+      phone: cached.phone ?? '',
+      profileUrl: cached.profileUrl ?? cached.profile_url ?? '',
+      createdDate: cached.createdDate ?? cached.created_date ?? '',
+      updatedDate: cached.updatedDate ?? cached.updated_date ?? '',
+    } as UserProfile;
   })
+
+  React.useEffect(() => {
+    fetchCurrentUser()
+      .then((u) => setProfile({
+        fullName: u.fullName ?? u.full_name ?? '',
+        email: u.email ?? '',
+        phone: u.phone ?? '',
+        profileUrl: u.profileUrl ?? u.profile_url ?? '',
+        createdDate: u.createdDate ?? u.created_date ?? '',
+        updatedDate: u.updatedDate ?? u.updated_date ?? '',
+      }))
+      .catch(() => {/* ignore, user may not be logged in */})
+  }, [])
 
   return (
     <main className="flex-1 text-white">
@@ -39,11 +57,11 @@ const MyProfile: React.FC = () => {
             <div className="relative z-10 rounded-[14px] border border-[#2f2f4a] bg-[#1a1a2d] p-6 flex flex-col items-center">
             <div
               className="h-32 w-32 rounded-full bg-cover bg-center border border-[#3a3a5a]"
-              style={{ backgroundImage: `url(${profile.profile_url})` }}
+              style={{ backgroundImage: `url(${profile?.profileUrl || new URL('../../assets/Image/LogoEduPrompt.png', import.meta.url).href})` }}
             />
             <div className="mt-4 text-center">
-              <div className="text-lg font-semibold">{profile.full_name}</div>
-              <div className="text-sm text-neutral-400">{profile.email}</div>
+              <div className="text-lg font-semibold">{profile?.fullName || '—'}</div>
+              <div className="text-sm text-neutral-400">{profile?.email || '—'}</div>
             </div>
             </div>
           </div>
@@ -56,37 +74,37 @@ const MyProfile: React.FC = () => {
               <div>
                 <label className="block text-sm text-neutral-400 mb-1">Họ và tên</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm">
-                  {profile.full_name}
+                  {profile?.fullName || '—'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-neutral-400 mb-1">Email</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm break-all">
-                  {profile.email}
+                  {profile?.email || '—'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-neutral-400 mb-1">Số điện thoại</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm">
-                  {profile.phone}
+                  {profile?.phone || '—'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-neutral-400 mb-1"> Link ảnh đại diện</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm break-all">
-                  {profile.profile_url}
+                  {profile?.profileUrl || '—'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-neutral-400 mb-1">Ngày tạo</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm">
-                  {profile.created_date}
+                  {profile?.createdDate || '—'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-neutral-400 mb-1">Cập nhật gần nhất</label>
                 <div className="w-full rounded-lg bg-[#23233a] border border-[#2a2a44] px-3 py-2 text-sm">
-                  {profile.updated_date}
+                  {profile?.updatedDate || '—'}
                 </div>
               </div>
             </div>
