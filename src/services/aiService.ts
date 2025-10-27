@@ -14,6 +14,7 @@ interface AIRequest {
 
 interface AIResponse {
   success: boolean
+  isMock?: boolean
   data?: string
   error?: string
 }
@@ -33,7 +34,6 @@ class AIService {
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true',
-          "Access-Control-Allow-Origin": "*",
           'Accept': '*/*',
         //   'User-Agent': 'Thunder Client (https://www.thunderclient.co)'
         },
@@ -55,18 +55,29 @@ class AIService {
       })
 
       if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        console.error(`Webhook returned non-OK status ${response.status}:`, text)
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const result = await response.json()
+      // Try to parse JSON, fallback to text for debugging
+      let result: any
+      try {
+        result = await response.json()
+      } catch (e) {
+        const text = await response.text().catch(() => '')
+        console.error('Failed to parse JSON from webhook response, text:', text)
+        throw e
+      }
+
       console.log('n8n Response:', result)
-      
       // Parse response format: [{"output": "..."}]
       const responseData = Array.isArray(result) ? result[0] : result
       const promptText = responseData?.output || responseData?.response || responseData?.data
-      
+
       return {
         success: true,
+        isMock: false,
         data: promptText
       }
     } catch (error) {
@@ -105,6 +116,7 @@ Yêu cầu bổ sung: ${requestData.yeuCauBoSung}
 
       return {
         success: true,
+        isMock: true,
         data: mockPrompt
       }
     }
@@ -113,13 +125,12 @@ Yêu cầu bổ sung: ${requestData.yeuCauBoSung}
   // Method để test kết nối
   async testConnection(): Promise<boolean> {
     try {
-      // Test với OPTIONS request để check CORS
+      // Try a lightweight GET to check endpoint reachability. Some endpoints
+      // may not support OPTIONS from browsers, so GET/POST is more reliable.
       const response = await fetch(this.webhookUrl, {
-        method: 'OPTIONS',
+        method: 'GET',
         headers: {
-          'ngrok-skip-browser-warning': 'true',
-          'Access-Control-Request-Method': 'POST',
-          'Access-Control-Request-Headers': 'Content-Type'
+          'ngrok-skip-browser-warning': 'true'
         }
       })
       return response.ok

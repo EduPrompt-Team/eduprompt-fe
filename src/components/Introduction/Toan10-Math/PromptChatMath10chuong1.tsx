@@ -4,14 +4,14 @@ import type { AIRequest } from '../../../services/aiService'
 
 const PromptChatMath10Chuong1: React.FC = () => {
   const [formData, setFormData] = useState({
-    monHoc: 'Toán Học',
-    lop: '10',
-    chuDe: 'Chương 1: Mệnh đề và Tập hợp',
+    monHoc: '',
+    lop: '',
+    chuDe: '',
     baiHoc: '',
     thoiLuong: '',
-    mucDo: 'CƠ BẢN',
-    loaiKiemTra: '15 phút',
-    hinhThuc: 'TRẮC NGHIỆM',
+    mucDo: '',
+    loaiKiemTra: '',
+    hinhThuc: '',
     soCau: '',
     thangDiem: '10',
     yeuCauBoSung: ''
@@ -20,7 +20,7 @@ const PromptChatMath10Chuong1: React.FC = () => {
   const [messages, setMessages] = useState<Array<{id: number, text: string, isUser: boolean, timestamp: Date}>>([
     {
       id: 1,
-      text: "Xin chào! Tôi là trợ lý AI chuyên về gíao dục . Tôi có thể giúp bạn tạo 1 prompt chuẩn cho môn Toán lớp 10. Hãy điền thông tin bên dưới để tôi có thể hỗ trợ bạn tốt nhất!",
+      text: "Xin chào! Tôi là trợ lý AI chuyên về giáo dục. Hãy điền thông tin đầu vào ở bên phải (Môn, Lớp, Chủ đề...) rồi nhấn 'Tạo Prompt chuẩn' để tôi tạo prompt cho bạn.",
       isUser: false,
       timestamp: new Date()
     }
@@ -125,6 +125,26 @@ Yêu cầu bổ sung: ${formData.yeuCauBoSung}`
     setMessages(prev => [...prev, userMessage])
     
     try {
+      // Validate required fields before calling AI service
+      const required = [
+        { key: 'monHoc', label: 'Môn học' },
+        { key: 'lop', label: 'Lớp' },
+        { key: 'chuDe', label: 'Chủ đề/Chương' }
+      ]
+      const missing = required.filter(r => !formData[r.key as keyof typeof formData]?.toString().trim())
+      if (missing.length > 0) {
+        const missingLabels = missing.map(m => m.label).join(', ')
+        const errorMessage = {
+          id: messages.length + 2,
+          text: `Vui lòng cung cấp thông tin bắt buộc: ${missingLabels}.`,
+          isUser: false,
+          timestamp: new Date()
+        }
+
+        setMessages(prev => [...prev, errorMessage])
+        setIsGenerating(false)
+        return
+      }
       // Gọi AI service thật
       const aiRequest: AIRequest = {
         monHoc: formData.monHoc,
