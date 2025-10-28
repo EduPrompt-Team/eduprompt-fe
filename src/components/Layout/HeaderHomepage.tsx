@@ -1,7 +1,8 @@
 import React from 'react'
 import { getCurrentUser, fetchCurrentUser, clearTokens, setCurrentUser } from '@/lib/api'
-import { User, ShoppingBag, Heart, ChevronDown } from 'lucide-react'
+import { User, ShoppingBag, Heart, ChevronDown, Shield } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { checkIsAdmin } from '@/utils/auth'
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -177,6 +178,17 @@ const HeaderHomepage: React.FC = () => {
                 <Heart className="h-5 w-5" />
                 <span>Prompt yêu thích</span>
               </button>
+              
+              {/* Admin Dashboard - Only visible to Admin users */}
+              {checkIsAdmin(user) && (
+                <div className="border-t border-[#2f2f4a] my-2">
+                  <button onClick={() => { setMenuOpen(false); navigate('/admin/dashboard') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-400 hover:bg-[#2c2c48]">
+                    <Shield className="h-5 w-5" />
+                    <span>Admin Dashboard</span>
+                  </button>
+                </div>
+              )}
+              
               <button onClick={() => { clearTokens(); setCurrentUser(null); setUser(null); setMenuOpen(false); navigate('/') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <span>Đăng xuất</span>
               </button>

@@ -1,6 +1,8 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const PromptTemplate10Chuong1: React.FC = () => {
+  const navigate = useNavigate()
   const prompt = `Vai trò: Bạn là một giáo viên THPT, có chuyên môn trong việc thiết kế giáo án và tài liệu dạy học.
 
 Nhiệm vụ: Dựa trên các thông tin đầu vào dưới đây, hãy tạo ra một bộ tài liệu hoàn chỉnh gồm 3 phần bắt buộc với tiêu đề được giữ nguyên: PHẦN 1: GIÁO ÁN HỌC TẬP; PHẦN 2: TÀI LIỆU HỖ TRỢ; PHẦN 3: ĐỀ THI.
@@ -55,7 +57,9 @@ Nếu hình thức là HỖN HỢP, phải phân tách rõ ràng hai phần tr�
   const Pill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <span className="inline-block px-2 py-0.5 rounded bg-[#23233a] border border-[#2a2a44] text-neutral-200 text-xs align-middle">{children}</span>
   )
-
+const handleChat10 = () => {
+  navigate('/grade10/math/detail/chuong1/chat')
+}
   return (
     <div className="px-4 md:px-6 lg:px-10 py-6 text-white">
       {/* Header row */}
@@ -118,6 +122,14 @@ Nếu hình thức là HỖN HỢP, phải phân tách rõ ràng hai phần tr�
                 onClick={handleCopy}
                 className="absolute bottom-8 right-4 inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-[#0a0a0f]
                 bg-gradient-to-r from-pink-200 via-rose-200 to-amber-200 hover:from-pink-300 hover:via-rose-300 hover:to-amber-300
+                shadow-md shadow-rose-200/30 hover:shadow-rose-300/40 transition-all duration-300 ease-out"
+              >
+                Bấm vào đây để sử dụng
+              </button>
+              <button
+                onClick={handleChat10}
+                className="absolute bottom-8 right-4 inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-[#0a0a0f]
+                bg-gradient-to-r from-pink-200 via-rose-200 to-amber-300 hover:from-pink-300 hover:via-rose-300 hover:to-amber-300
                 shadow-md shadow-rose-200/30 hover:shadow-rose-300/40 transition-all duration-300 ease-out"
               >
                 Bấm vào đây để sử dụng

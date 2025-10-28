@@ -26,6 +26,16 @@ const Login: React.FC = () => {
     // @ts-ignore
     console.log('VITE_GOOGLE_CLIENT_ID =', import.meta.env.VITE_GOOGLE_CLIENT_ID)
     console.log('ORIGIN =', location.origin)
+
+    // Hydrate remember state and saved email
+    try {
+      const savedRemember = localStorage.getItem('rememberMe')
+      const savedEmail = localStorage.getItem('rememberEmail')
+      if (savedRemember === 'true') {
+        setRememberState(true)
+        if (savedEmail) setEmail(savedEmail)
+      }
+    } catch {}
   }, [])
     const handleEmailPasswordLogin = async () => {
         if (!email || !password) {
@@ -39,6 +49,16 @@ const Login: React.FC = () => {
             // Backend trả về TokenResponseDto { accessToken, refreshToken }
             setTokens(data.accessToken, data.refreshToken)
             await fetchCurrentUser()
+            // Persist remember choices
+            try {
+              if (remember) {
+                localStorage.setItem('rememberMe', 'true')
+                localStorage.setItem('rememberEmail', email)
+              } else {
+                localStorage.setItem('rememberMe', 'false')
+                localStorage.removeItem('rememberEmail')
+              }
+            } catch {}
             navigate('/home', { replace: true })
         } catch (e: any) {
             const message = e?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'

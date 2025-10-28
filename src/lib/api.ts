@@ -65,8 +65,14 @@ export function getCurrentUser(): any | null {
 
 export async function fetchCurrentUser(): Promise<any> {
   const { data } = await api.get('/api/auth/me');
-  setCurrentUser(data);
-  return data;
+  // Normalize: default role to 'User' with roleId = 2 if backend doesn't provide one
+  const normalized = {
+    ...data,
+    roleName: data?.roleName ?? 'User',
+    roleId: data?.roleId ?? 2,
+  };
+  setCurrentUser(normalized);
+  return normalized;
 }
 
 api.interceptors.request.use((config) => {
