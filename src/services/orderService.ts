@@ -25,48 +25,48 @@ export interface CreateOrderFromCartRequest {
 }
 
 class OrderService {
-  // GET /api/Order
+  // GET /api/orders
   async getAllOrders(): Promise<Order[]> {
-    const { data } = await api.get('/api/Order')
+    const { data } = await api.get('/api/orders')
     return data
   }
 
-  // GET /api/Order/{orderId}
+  // GET /api/orders/{id}
   async getOrderById(orderId: number): Promise<Order> {
-    const { data } = await api.get(`/api/Order/${orderId}`)
+    const { data } = await api.get(`/api/orders/${orderId}`)
     return data
   }
 
-  // POST /api/Order/{orderId}/cancel
+  // POST /api/orders/{id}/cancel
   async cancelOrder(orderId: number): Promise<void> {
-    await api.post(`/api/Order/${orderId}/cancel`)
+    await api.post(`/api/orders/${orderId}/cancel`)
   }
 
-  // PATCH /api/Order/{orderId}/status
+  // PATCH /api/orders/{id}/status
   async updateOrderStatus(orderId: number, status: string): Promise<Order> {
-    const { data } = await api.patch(`/api/Order/${orderId}/status`, null, {
+    const { data } = await api.patch(`/api/orders/${orderId}/status`, null, {
       params: { status }
     })
     return data
   }
 
-  // GET /api/Order/admin/{orderId}
+  // GET /api/admin/orders/{id}
   async getOrderByIdAdmin(orderId: number): Promise<Order> {
-    const { data } = await api.get(`/api/Order/admin/${orderId}`)
+    const { data } = await api.get(`/api/admin/orders/${orderId}`)
     return data
   }
 
-  // POST /api/Order/create-from-cart
+  // POST /api/orders/create-from-cart
   async createOrderFromCart(request?: CreateOrderFromCartRequest): Promise<Order> {
-    const { data } = await api.post('/api/Order/create-from-cart', null, {
+    const { data } = await api.post('/api/orders/create-from-cart', null, {
       params: request || {}
     })
     return data
   }
 
-  // GET /api/Order/my
+  // GET /api/orders/my
   async getMyOrders(): Promise<Order[]> {
-    const { data } = await api.get('/api/Order/my')
+    const { data } = await api.get('/api/orders/my')
     return data
   }
 }

@@ -22,44 +22,44 @@ export interface UpdateCategoryRequest {
 }
 
 class CategoryService {
-  // GET /api/Categories
+  // GET /api/categories
   async getAllCategories(): Promise<Category[]> {
-    const { data } = await api.get('/api/Categories')
+    const { data } = await api.get('/api/categories')
     return data
   }
 
-  // POST /api/Categories
+  // POST /api/categories
   async createCategory(request: CreateCategoryRequest): Promise<Category> {
-    const { data } = await api.post('/api/Categories', request)
+    const { data } = await api.post('/api/categories', request)
     return data
   }
 
-  // GET /api/Categories/{id}
+  // GET /api/categories/{id}
   async getCategoryById(id: number): Promise<Category> {
-    const { data } = await api.get(`/api/Categories/${id}`)
+    const { data } = await api.get(`/api/categories/${id}`)
     return data
   }
 
-  // PUT /api/Categories/{id}
+  // PUT /api/categories/{id}
   async updateCategory(id: number, request: UpdateCategoryRequest): Promise<Category> {
-    const { data } = await api.put(`/api/Categories/${id}`, request)
+    const { data } = await api.put(`/api/categories/${id}`, request)
     return data
   }
 
-  // DELETE /api/Categories/{id}
+  // DELETE /api/categories/{id}
   async deleteCategory(id: number): Promise<void> {
-    await api.delete(`/api/Categories/${id}`)
+    await api.delete(`/api/categories/${id}`)
   }
 
-  // GET /api/Categories/{id}/subcategories
+  // GET /api/categories/{id}/subcategories
   async getSubcategories(categoryId: number): Promise<Category[]> {
-    const { data } = await api.get(`/api/Categories/${categoryId}/subcategories`)
+    const { data } = await api.get(`/api/categories/${categoryId}/subcategories`)
     return data
   }
 
-  // GET /api/Categories/root
+  // GET /api/categories/root
   async getRootCategories(): Promise<Category[]> {
-    const { data } = await api.get('/api/Categories/root')
+    const { data } = await api.get('/api/categories/root')
     return data
   }
 }
