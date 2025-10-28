@@ -22,51 +22,51 @@ export interface UpdatePaymentMethodRequest {
 }
 
 class PaymentMethodService {
-  // GET /api/PaymentMethod
+  // GET /api/payment-methods
   async getAllPaymentMethods(): Promise<PaymentMethod[]> {
-    const { data } = await api.get('/api/PaymentMethod')
+    const { data } = await api.get('/api/payment-methods')
     return data
   }
 
-  // POST /api/PaymentMethod
+  // POST /api/payment-methods
   async createPaymentMethod(request: CreatePaymentMethodRequest): Promise<PaymentMethod> {
-    const { data } = await api.post('/api/PaymentMethod', request)
+    const { data } = await api.post('/api/payment-methods', request)
     return data
   }
 
-  // GET /api/PaymentMethod/{id}
+  // GET /api/payment-methods/{id}
   async getPaymentMethodById(id: number): Promise<PaymentMethod> {
-    const { data } = await api.get(`/api/PaymentMethod/${id}`)
+    const { data } = await api.get(`/api/payment-methods/${id}`)
     return data
   }
 
-  // PUT /api/PaymentMethod/{id}
+  // PUT /api/payment-methods/{id}
   async updatePaymentMethod(id: number, request: UpdatePaymentMethodRequest): Promise<PaymentMethod> {
-    const { data } = await api.put(`/api/PaymentMethod/${id}`, request)
+    const { data } = await api.put(`/api/payment-methods/${id}`, request)
     return data
   }
 
-  // DELETE /api/PaymentMethod/{id}
+  // DELETE /api/payment-methods/{id}
   async deletePaymentMethod(id: number): Promise<void> {
-    await api.delete(`/api/PaymentMethod/${id}`)
+    await api.delete(`/api/payment-methods/${id}`)
   }
 
-  // POST /api/PaymentMethod/{id}/set-default
+  // POST /api/payment-methods/{id}/set-default
   async setAsDefault(id: number, userId: number): Promise<void> {
-    await api.post(`/api/PaymentMethod/${id}/set-default`, null, {
+    await api.post(`/api/payment-methods/${id}/set-default`, null, {
       params: { userId }
     })
   }
 
-  // GET /api/PaymentMethod/user/{UserId}
+  // GET /api/payment-methods/user/{UserId}
   async getPaymentMethodsByUserId(userId: number): Promise<PaymentMethod[]> {
-    const { data } = await api.get(`/api/PaymentMethod/user/${userId}`)
+    const { data } = await api.get(`/api/payment-methods/user/${userId}`)
     return data
   }
 
-  // GET /api/PaymentMethod/user/{UserId}/default
+  // GET /api/payment-methods/user/{UserId}/default
   async getDefaultPaymentMethod(userId: number): Promise<PaymentMethod> {
-    const { data } = await api.get(`/api/PaymentMethod/user/${userId}/default`)
+    const { data } = await api.get(`/api/payment-methods/user/${userId}/default`)
     return data
   }
 }

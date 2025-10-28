@@ -25,69 +25,69 @@ export interface UpdatePostRequest {
 }
 
 class PostService {
-  // GET /api/Post
+  // GET /api/posts
   async getAllPosts(): Promise<Post[]> {
-    const { data } = await api.get('/api/Post')
+    const { data } = await api.get('/api/posts')
     return data
   }
 
-  // POST /api/Post
+  // POST /api/posts
   async createPost(request: CreatePostRequest): Promise<Post> {
-    const { data } = await api.post('/api/Post', request)
+    const { data } = await api.post('/api/posts', request)
     return data
   }
 
-  // GET /api/Post/{PostId}
+  // GET /api/posts/{id}
   async getPostById(postId: number): Promise<Post> {
-    const { data } = await api.get(`/api/Post/${postId}`)
+    const { data } = await api.get(`/api/posts/${postId}`)
     return data
   }
 
-  // PUT /api/Post/{PostId}
+  // PUT /api/posts/{id}
   async updatePost(postId: number, request: UpdatePostRequest): Promise<Post> {
-    const { data } = await api.put(`/api/Post/${postId}`, request)
+    const { data } = await api.put(`/api/posts/${postId}`, request)
     return data
   }
 
-  // DELETE /api/Post/{PostId}
+  // DELETE /api/posts/{id}
   async deletePost(postId: number): Promise<void> {
-    await api.delete(`/api/Post/${postId}`)
+    await api.delete(`/api/posts/${postId}`)
   }
 
-  // POST /api/Post/{PostId}/like
+  // POST /api/posts/{id}/like
   async likePost(postId: number): Promise<void> {
-    await api.post(`/api/Post/${postId}/like`)
+    await api.post(`/api/posts/${postId}/like`)
   }
 
-  // GET /api/Post/{PostId}/rating
+  // GET /api/posts/{id}/rating
   async getPostRating(postId: number): Promise<number> {
-    const { data } = await api.get(`/api/Post/${postId}/rating`)
+    const { data } = await api.get(`/api/posts/${postId}/rating`)
     return data
   }
 
-  // GET /api/Post/published
+  // GET /api/posts/published
   async getPublishedPosts(): Promise<Post[]> {
-    const { data } = await api.get('/api/Post/published')
+    const { data } = await api.get('/api/posts/published')
     return data
   }
 
-  // GET /api/Post/search
+  // GET /api/posts/search
   async searchPosts(searchTerm: string): Promise<Post[]> {
-    const { data } = await api.get('/api/Post/search', {
+    const { data } = await api.get('/api/posts/search', {
       params: { searchTerm }
     })
     return data
   }
 
-  // GET /api/Post/type/{postType}
+  // GET /api/posts/type/{postType}
   async getPostsByType(postType: string): Promise<Post[]> {
-    const { data } = await api.get(`/api/Post/type/${postType}`)
+    const { data } = await api.get(`/api/posts/type/${postType}`)
     return data
   }
 
-  // GET /api/Post/user/{UserId}
+  // GET /api/posts/user/{UserId}
   async getPostsByUserId(userId: number): Promise<Post[]> {
-    const { data } = await api.get(`/api/Post/user/${userId}`)
+    const { data } = await api.get(`/api/posts/user/${userId}`)
     return data
   }
 }

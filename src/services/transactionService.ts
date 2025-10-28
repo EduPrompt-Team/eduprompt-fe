@@ -26,44 +26,44 @@ export interface UpdateTransactionRequest {
 }
 
 class TransactionService {
-  // GET /api/Transaction
+  // GET /api/transactions
   async getAllTransactions(): Promise<Transaction[]> {
-    const { data } = await api.get('/api/Transaction')
+    const { data } = await api.get('/api/transactions')
     return data
   }
 
-  // POST /api/Transaction
+  // POST /api/transactions
   async createTransaction(request: CreateTransactionRequest): Promise<Transaction> {
-    const { data } = await api.post('/api/Transaction', request)
+    const { data } = await api.post('/api/transactions', request)
     return data
   }
 
-  // GET /api/Transaction/{id}
+  // GET /api/transactions/{id}
   async getTransactionById(id: number): Promise<Transaction> {
-    const { data } = await api.get(`/api/Transaction/${id}`)
+    const { data } = await api.get(`/api/transactions/${id}`)
     return data
   }
 
-  // PUT /api/Transaction/{id}
+  // PUT /api/transactions/{id}
   async updateTransaction(id: number, request: UpdateTransactionRequest): Promise<Transaction> {
-    const { data } = await api.put(`/api/Transaction/${id}`, request)
+    const { data } = await api.put(`/api/transactions/${id}`, request)
     return data
   }
 
-  // DELETE /api/Transaction/{id}
+  // DELETE /api/transactions/{id}
   async deleteTransaction(id: number): Promise<void> {
-    await api.delete(`/api/Transaction/${id}`)
+    await api.delete(`/api/transactions/${id}`)
   }
 
-  // GET /api/Transaction/user/{UserId}
+  // GET /api/transactions/user/{UserId}
   async getTransactionsByUserId(userId: number): Promise<Transaction[]> {
-    const { data } = await api.get(`/api/Transaction/user/${userId}`)
+    const { data } = await api.get(`/api/transactions/user/${userId}`)
     return data
   }
 
-  // GET /api/Transaction/wallet/{WalletId}
+  // GET /api/transactions/wallet/{WalletId}
   async getTransactionsByWalletId(walletId: number): Promise<Transaction[]> {
-    const { data } = await api.get(`/api/Transaction/wallet/${walletId}`)
+    const { data } = await api.get(`/api/transactions/wallet/${walletId}`)
     return data
   }
 }

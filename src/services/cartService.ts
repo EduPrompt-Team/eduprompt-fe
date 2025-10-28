@@ -25,32 +25,32 @@ export interface AddItemRequest {
 }
 
 class CartService {
-  // GET /api/Cart
+  // GET /api/cart
   async getCart(): Promise<Cart> {
-    const { data } = await api.get('/api/Cart')
+    const { data } = await api.get('/api/cart')
     return data
   }
 
-  // DELETE /api/Cart
+  // DELETE /api/cart
   async clearCart(): Promise<void> {
-    await api.delete('/api/Cart')
+    await api.delete('/api/cart')
   }
 
-  // POST /api/Cart/items
+  // POST /api/cart/items
   async addItem(request: AddItemRequest): Promise<CartItem> {
-    const { data } = await api.post('/api/Cart/items', request)
+    const { data } = await api.post('/api/cart/items', request)
     return data
   }
 
-  // PUT /api/Cart/items/{cartDetailId}
+  // PUT /api/cart/items/{cartDetailId}
   async updateItem(cartDetailId: number, quantity: number): Promise<CartItem> {
-    const { data } = await api.put(`/api/Cart/items/${cartDetailId}`, { quantity })
+    const { data } = await api.put(`/api/cart/items/${cartDetailId}`, { quantity })
     return data
   }
 
-  // DELETE /api/Cart/items/{cartDetailId}
+  // DELETE /api/cart/items/{cartDetailId}
   async removeItem(cartDetailId: number): Promise<void> {
-    await api.delete(`/api/Cart/items/${cartDetailId}`)
+    await api.delete(`/api/cart/items/${cartDetailId}`)
   }
 }
 
