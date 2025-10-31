@@ -141,101 +141,101 @@ export const cartApi = {
 export const orderApi = {
   // Create order from cart
   createFromCart: (notes?: string) => 
-    api.post('/api/order/create-from-cart', null, { params: { notes } }),
+    api.post('/api/orders/create-from-cart', null, { params: { notes } }),
   
   // Get user's orders
-  getMyOrders: () => api.get('/api/order/my'),
+  getMyOrders: () => api.get('/api/orders/my'),
   
   // Get order by ID
-  getById: (orderId: number) => api.get(`/api/order/${orderId}`),
+  getById: (orderId: number) => api.get(`/api/orders/${orderId}`),
   
   // Cancel order
-  cancelOrder: (orderId: number) => api.post(`/api/order/${orderId}/cancel`),
+  cancelOrder: (orderId: number) => api.post(`/api/orders/${orderId}/cancel`),
   
   // Update order status (Admin only)
   updateStatus: (orderId: number, status: string) => 
-    api.patch(`/api/order/${orderId}/status`, null, { params: { status } }),
+    api.patch(`/api/orders/${orderId}/status`, null, { params: { status } }),
 };
 
 // ===== PAYMENT METHOD API FUNCTIONS =====
 export const paymentMethodApi = {
   // Get all payment methods
-  getAll: () => api.get('/api/paymentmethod'),
+  getAll: () => api.get('/api/payment-methods'),
   
   // Get payment methods by user ID
-  getByUserId: (userId: number) => api.get(`/api/paymentmethod/user/${userId}`),
+  getByUserId: (userId: number) => api.get(`/api/payment-methods/user/${userId}`),
   
   // Get payment method by ID
-  getById: (id: number) => api.get(`/api/paymentmethod/${id}`),
+  getById: (id: number) => api.get(`/api/payment-methods/${id}`),
   
   // Create payment method
-  create: (data: any) => api.post('/api/paymentmethod', data),
+  create: (data: any) => api.post('/api/payment-methods', data),
   
   // Update payment method
-  update: (id: number, data: any) => api.put(`/api/paymentmethod/${id}`, data),
+  update: (id: number, data: any) => api.put(`/api/payment-methods/${id}`, data),
   
   // Delete payment method
-  delete: (id: number) => api.delete(`/api/paymentmethod/${id}`),
+  delete: (id: number) => api.delete(`/api/payment-methods/${id}`),
   
   // Get default payment method
-  getDefault: (userId: number) => api.get(`/api/paymentmethod/user/${userId}/default`),
+  getDefault: (userId: number) => api.get(`/api/payment-methods/user/${userId}/default`),
   
   // Set as default payment method
   setAsDefault: (id: number, userId: number) => 
-    api.post(`/api/paymentmethod/${id}/set-default`, null, { params: { userId } }),
+    api.post(`/api/payment-methods/${id}/set-default`, null, { params: { userId } }),
 };
 
 // ===== TRANSACTION API FUNCTIONS =====
 export const transactionApi = {
   // Get all transactions (Admin only)
-  getAll: () => api.get('/api/transaction'),
+  getAll: () => api.get('/api/transactions'),
   
   // Get transactions by wallet ID
-  getByWalletId: (walletId: number) => api.get(`/api/transaction/wallet/${walletId}`),
+  getByWalletId: (walletId: number) => api.get(`/api/transactions/wallet/${walletId}`),
   
   // Get transactions by user ID
-  getByUserId: (userId: number) => api.get(`/api/transaction/user/${userId}`),
+  getByUserId: (userId: number) => api.get(`/api/transactions/user/${userId}`),
   
   // Get transaction by ID
-  getById: (id: number) => api.get(`/api/transaction/${id}`),
+  getById: (id: number) => api.get(`/api/transactions/${id}`),
   
   // Create transaction
-  create: (data: any) => api.post('/api/transaction', data),
+  create: (data: any) => api.post('/api/transactions', data),
   
   // Update transaction
-  update: (id: number, data: any) => api.put(`/api/transaction/${id}`, data),
+  update: (id: number, data: any) => api.put(`/api/transactions/${id}`, data),
   
   // Delete transaction
-  delete: (id: number) => api.delete(`/api/transaction/${id}`),
+  delete: (id: number) => api.delete(`/api/transactions/${id}`),
   
   // Get wallet balance
   getWalletBalance: (walletId: number) => 
-    api.get(`/api/transaction/wallet/${walletId}/balance`),
+    api.get(`/api/transactions/wallet/${walletId}/balance`),
   
   // Get recent transactions
   getRecent: (walletId: number, count: number = 20) => 
-    api.get(`/api/transaction/wallet/${walletId}/recent`, { params: { count } }),
+    api.get(`/api/transactions/wallet/${walletId}/recent`, { params: { count } }),
 };
 
 // ===== WALLET API FUNCTIONS =====
 export const walletApi = {
   // Get wallet by user ID
-  getByUserId: (userId: number) => api.get(`/api/wallet/user/${userId}`),
+  getByUserId: (userId: number) => api.get(`/api/wallets/user/${userId}`),
   
   // Get wallet by ID
-  getById: (walletId: number) => api.get(`/api/wallet/${walletId}`),
+  getById: (walletId: number) => api.get(`/api/wallets/${walletId}`),
   
   // Create wallet
-  create: (data: any) => api.post('/api/wallet', data),
+  create: (data: any) => api.post('/api/wallets', data),
   
   // Update wallet
-  update: (walletId: number, data: any) => api.put(`/api/wallet/${walletId}`, data),
+  update: (walletId: number, data: any) => api.put(`/api/wallets/${walletId}`, data),
   
   // Delete wallet
-  delete: (walletId: number) => api.delete(`/api/wallet/${walletId}`),
+  delete: (walletId: number) => api.delete(`/api/wallets/${walletId}`),
   
   // Get wallet balance
-  getBalance: (userId: number) => api.get(`/api/wallet/balance/${userId}`),
+  getBalance: (userId: number) => api.get(`/api/wallets/balance/${userId}`),
   
   // Add funds to wallet
   addFunds: (userId: number, amount: number) => 
@@ -249,19 +249,19 @@ export const walletApi = {
 // ===== PACKAGE API FUNCTIONS =====
 export const packageApi = {
   // Get all packages
-  getAll: () => api.get('/api/package'),
+  getAll: () => api.get('/api/packages'),
   
   // Get package by ID
-  getById: (id: number) => api.get(`/api/package/${id}`),
+  getById: (id: number) => api.get(`/api/packages/${id}`),
   
   // Create package
-  create: (data: any) => api.post('/api/package', data),
+  create: (data: any) => api.post('/api/packages', data),
   
   // Update package
-  update: (id: number, data: any) => api.put(`/api/package/${id}`, data),
+  update: (id: number, data: any) => api.put(`/api/packages/${id}`, data),
   
   // Delete package
-  delete: (id: number) => api.delete(`/api/package/${id}`),
+  delete: (id: number) => api.delete(`/api/packages/${id}`),
 };
 
 // ===== MOCK DATA FOR TESTING =====
