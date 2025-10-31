@@ -23,9 +23,8 @@ export const paymentService = {
   // Create VNPay URL and redirect the browser
   async payOrderWithVnpay(orderId: number, req: VnpayRequestDto = {}): Promise<void> {
     const { data } = await api.post(`/api/payments/orders/${orderId}/vnpay-url`, req);
-    if (data?.url) {
-      window.location.href = data.url;
-    }
+    const url = typeof data === 'string' ? data : data?.url;
+    if (url) window.location.href = url;
   },
 
   // Get payments by order
