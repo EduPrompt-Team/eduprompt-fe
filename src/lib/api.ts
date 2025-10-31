@@ -208,13 +208,7 @@ export const transactionApi = {
   // Delete transaction
   delete: (id: number) => api.delete(`/api/transactions/${id}`),
   
-  // Get wallet balance
-  getWalletBalance: (walletId: number) => 
-    api.get(`/api/transactions/wallet/${walletId}/balance`),
-  
-  // Get recent transactions
-  getRecent: (walletId: number, count: number = 20) => 
-    api.get(`/api/transactions/wallet/${walletId}/recent`, { params: { count } }),
+  // Note: wallet balance/recent are not exposed under TransactionController in BE
 };
 
 // ===== WALLET API FUNCTIONS =====
@@ -239,11 +233,11 @@ export const walletApi = {
   
   // Add funds to wallet
   addFunds: (userId: number, amount: number) => 
-    api.post('/api/wallet/add-funds', { userId, amount }),
+    api.post('/api/wallets/add-funds', { userId, amount }),
   
   // Deduct funds from wallet
   deductFunds: (userId: number, amount: number) => 
-    api.post('/api/wallet/deduct-funds', { userId, amount }),
+    api.post('/api/wallets/deduct-funds', { userId, amount }),
 };
 
 // ===== PACKAGE API FUNCTIONS =====
