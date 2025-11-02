@@ -1,83 +1,77 @@
 import { api } from '@/lib/api'
-
-export interface PromptInstance {
-  instanceId: number
-  templateId: number
-  userId: number
-  status: string
-  inputData?: string
-  outputData?: string
-  createdAt: string
-  completedAt?: string
-  [key: string]: any
-}
-
-export interface CreatePromptInstanceRequest {
-  templateId: number
-  inputData?: string
-}
-
-export interface UpdatePromptInstanceRequest {
-  inputData?: string
-  status?: string
-}
-
-export interface CompleteInstanceRequest {
-  outputData: string
-}
+import type { PromptInstanceDto, PromptInstanceDetailDto } from '@/types/dto/prompt'
 
 class PromptInstanceService {
-  // POST /api/PromptInstance
-  async createInstance(request: CreatePromptInstanceRequest): Promise<PromptInstance> {
-    const { data } = await api.post('/api/PromptInstance', request)
+  // POST /api/prompt-instances
+  async create(payload: Omit<PromptInstanceDto, 'instanceId' | 'executedAt'>): Promise<PromptInstanceDto> {
+    const { data } = await api.post('/api/prompt-instances', payload)
     return data
   }
 
-  // GET /api/PromptInstance/{InstanceId}
-  async getInstanceById(instanceId: number): Promise<PromptInstance> {
-    const { data } = await api.get(`/api/PromptInstance/${instanceId}`)
+  // GET /api/prompt-instances/{InstanceId}
+  async getById(instanceId: number): Promise<PromptInstanceDto> {
+    const { data } = await api.get(`/api/prompt-instances/${instanceId}`)
     return data
   }
 
-  // PUT /api/PromptInstance/{InstanceId}
-  async updateInstance(instanceId: number, request: UpdatePromptInstanceRequest): Promise<PromptInstance> {
-    const { data } = await api.put(`/api/PromptInstance/${instanceId}`, request)
+  // PUT /api/prompt-instances/{InstanceId}
+  async update(instanceId: number, payload: Partial<PromptInstanceDto>): Promise<PromptInstanceDto> {
+    const { data } = await api.put(`/api/prompt-instances/${instanceId}`, payload)
     return data
   }
 
-  // DELETE /api/PromptInstance/{InstanceId}
-  async deleteInstance(instanceId: number): Promise<void> {
-    await api.delete(`/api/PromptInstance/${instanceId}`)
+  // DELETE /api/prompt-instances/{InstanceId}
+  async remove(instanceId: number): Promise<void> {
+    await api.delete(`/api/prompt-instances/${instanceId}`)
   }
 
-  // POST /api/PromptInstance/{InstanceId}/complete
-  async completeInstance(instanceId: number, request: CompleteInstanceRequest): Promise<PromptInstance> {
-    const { data } = await api.post(`/api/PromptInstance/${instanceId}/complete`, request)
+  // POST /api/prompt-instances/{InstanceId}/complete
+  async complete(instanceId: number, outputData: Record<string, unknown>): Promise<void> {
+    await api.post(`/api/prompt-instances/${instanceId}/complete`, outputData)
+  }
+
+  // GET /api/prompt-instances/recent/{UserId}
+  async getRecent(userId: number): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/recent/${userId}`)
     return data
   }
 
-  // GET /api/PromptInstance/recent/{UserId}
-  async getRecentInstances(userId: number): Promise<PromptInstance[]> {
-    const { data } = await api.get(`/api/PromptInstance/recent/${userId}`)
+  // GET /api/prompt-instances/status/{status}
+  async getByStatus(status: string): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/status/${encodeURIComponent(status)}`)
     return data
   }
 
-  // GET /api/PromptInstance/status/{status}
-  async getInstancesByStatus(status: string): Promise<PromptInstance[]> {
-    const { data } = await api.get(`/api/PromptInstance/status/${status}`)
+  // GET /api/prompt-instances/template/{templateId}
+  async getByTemplate(templateId: number): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/template/${templateId}`)
     return data
   }
 
-  // GET /api/PromptInstance/template/{templateId}
-  async getInstancesByTemplate(templateId: number): Promise<PromptInstance[]> {
-    const { data } = await api.get(`/api/PromptInstance/template/${templateId}`)
+  // GET /api/prompt-instances/user/{UserId}
+  async getByUser(userId: number): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/user/${userId}`)
     return data
   }
 
-  // GET /api/PromptInstance/user/{UserId}
-  async getInstancesByUserId(userId: number): Promise<PromptInstance[]> {
-    const { data } = await api.get(`/api/PromptInstance/user/${userId}`)
+  // Details
+  async getDetails(instanceId: number): Promise<PromptInstanceDetailDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/${instanceId}/details`)
     return data
+  }
+
+  async createDetail(instanceId: number, payload: Omit<PromptInstanceDetailDto, 'detailId'>): Promise<PromptInstanceDetailDto> {
+    const { data } = await api.post(`/api/prompt-instances/${instanceId}/details`, payload)
+    return data
+  }
+
+  async updateDetail(instanceId: number, detailId: number, payload: Partial<PromptInstanceDetailDto>): Promise<PromptInstanceDetailDto> {
+    const { data } = await api.put(`/api/prompt-instances/${instanceId}/details/${detailId}`, payload)
+    return data
+  }
+
+  async deleteDetail(instanceId: number, detailId: number): Promise<void> {
+    await api.delete(`/api/prompt-instances/${instanceId}/details/${detailId}`)
   }
 }
 

@@ -8,6 +8,26 @@ const PromptGrade12List: React.FC = () => {
   const handleGrade11 = () => navigate('/grade11')
   // In case grade12 route exists; safe no-op if not configured
   const handleGrade12 = () => navigate('/grade12')
+  
+  // Subject key mapping for navigation
+  const subjectKeyMap: Record<string, string> = {
+    'Toán': 'math',
+    'Ngữ Văn': 'literature',
+    'Tiếng Anh': 'english',
+    'Hoá Học': 'chemistry',
+    'Lịch Sử': 'history',
+    'Địa Lý': 'geography',
+    'Tin Học': 'informatics',
+    'Công Nghệ': 'technology',
+    'Vật Lý': 'physics',
+    'Sinh học': 'biology',
+  }
+  
+  // Handler for subject navigation
+  const handleSubjectClick = (subjectName: string) => {
+    const subjectKey = subjectKeyMap[subjectName] || subjectName.toLowerCase()
+    navigate(`/grade12/${subjectKey}/detail/chuong1`)
+  }
 
   const features = [
     {
@@ -16,6 +36,7 @@ const PromptGrade12List: React.FC = () => {
       image: new URL('../../assets/Image/Toan12.png', import.meta.url).href,
       gradient: "from-blue-500 to-purple-600",
       glowColor: "blue-500",
+      onClick: () => handleSubjectClick('Toán'),
     },
     {
       id: 2,
@@ -23,6 +44,7 @@ const PromptGrade12List: React.FC = () => {
       image: new URL('../../assets/Image/NguVan12.png', import.meta.url).href,
       gradient: "from-green-500 to-emerald-600",
       glowColor: "green-500",
+      onClick: () => handleSubjectClick('Ngữ Văn'),
     },
     {
       id: 3,
@@ -30,6 +52,7 @@ const PromptGrade12List: React.FC = () => {
       image: new URL('../../assets/Image/TiengAnh12.png', import.meta.url).href,
       gradient: "from-orange-500 to-red-600",
       glowColor: "orange-500",
+      onClick: () => handleSubjectClick('Tiếng Anh'),
     },
     {
         id: 4,
@@ -37,6 +60,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/HoaHoc12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Hoá Học'),
       },
       {
         id: 5,
@@ -44,6 +68,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/LichSu12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Lịch Sử'),
       },
       {
         id: 6,
@@ -51,6 +76,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/DiaLy12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Địa Lý'),
       },
       {
         id: 7,
@@ -58,6 +84,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/TinHoc12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Tin Học'),
       },
       {
         id: 8,
@@ -65,6 +92,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/CongNghe12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Công Nghệ'),
       },
       {
         id: 9,
@@ -72,6 +100,7 @@ const PromptGrade12List: React.FC = () => {
         image: new URL('../../assets/Image/VatLy12.png', import.meta.url).href,
         gradient: "from-orange-500 to-red-600",
         glowColor: "orange-500",
+        onClick: () => handleSubjectClick('Vật Lý'),
       }
   ]
 

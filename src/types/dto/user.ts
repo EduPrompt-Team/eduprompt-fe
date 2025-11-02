@@ -9,8 +9,11 @@ export interface UserDto {
   profileUrl?: string | null
   createdDate?: string | null
   updatedDate?: string | null
-  status?: UserStatus | null
-  roleName?: string | null // Role name from Roles table
+  status?: string | null
+  password?: string | null
+  googleId?: string | null
+  refreshToken?: string | null
+  refreshTokenExpiryTime?: string | null
 }
 
 

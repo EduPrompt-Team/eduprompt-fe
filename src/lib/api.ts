@@ -207,14 +207,14 @@ export const transactionApi = {
   
   // Delete transaction
   delete: (id: number) => api.delete(`/api/transactions/${id}`),
-  
-  // Note: wallet balance/recent are not exposed under TransactionController in BE
 };
 
 // ===== WALLET API FUNCTIONS =====
 export const walletApi = {
   // Get wallet by user ID
-  getByUserId: (userId: number) => api.get(`/api/wallets/user/${userId}`),
+  getByUserId: (userId: number) => {
+    return api.get(`/api/wallets/user/${userId}`)
+  },
   
   // Get wallet by ID
   getById: (walletId: number) => api.get(`/api/wallets/${walletId}`),
@@ -321,7 +321,7 @@ export const mockData = {
     walletID: 1,
     userID: 1,
     balance: 150.00,
-    currency: 'USD',
+    currency: 'VND',
     createdDate: new Date().toISOString(),
     status: 'Active'
   },
@@ -373,7 +373,7 @@ export const mockData = {
 };
 
 // ===== UTILITY FUNCTIONS =====
-export const formatCurrency = (amount: number, currency: string = 'USD'): string => {
+export const formatCurrency = (amount: number, currency: string = 'VND'): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency

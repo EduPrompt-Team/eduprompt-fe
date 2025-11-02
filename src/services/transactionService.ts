@@ -18,6 +18,8 @@ export interface CreateTransactionRequest {
   orderId?: number
   amount: number
   transactionType: string
+  transactionReference?: string
+  description?: string
 }
 
 export interface UpdateTransactionRequest {

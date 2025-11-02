@@ -1,5 +1,6 @@
 import React from 'react';
 import { paymentService } from '../../services/paymentService';
+import { useToast } from '@/components/ui/toast';
 
 type Props = {
   orderId: number;
@@ -11,13 +12,14 @@ type Props = {
 
 export const PayWithVnpayButton: React.FC<Props> = ({ orderId, bankCode, className, returnUrl, label }) => {
   const [loading, setLoading] = React.useState(false);
+  const { showToast } = useToast();
   const onClick = async () => {
     try {
       setLoading(true);
       await paymentService.payOrderWithVnpay(orderId, { bankCode, returnUrl });
     } catch (e) {
       console.error('VNPay init error', e);
-      alert('Không khởi tạo được thanh toán VNPay. Vui lòng thử lại.');
+      showToast('Không khởi tạo được thanh toán VNPay. Vui lòng thử lại.', 'error');
     } finally {
       setLoading(false);
     }

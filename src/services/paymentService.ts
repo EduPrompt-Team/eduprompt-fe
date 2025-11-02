@@ -6,6 +6,13 @@ export type VnpayRequestDto = {
   returnUrl?: string; // optional override; backend uses config if omitted
 };
 
+export type WalletTopupRequestDto = {
+  amount: number; // Required, > 0 (VND)
+  bankCode?: string; // Optional
+  language?: string; // Optional, default: 'vn'
+  returnUrl?: string; // Optional
+};
+
 export type VnpayQueryDto = {
   txnRef: string;
   transactionDate: string; // yyyyMMddHHmmss (GMT+7)
@@ -20,16 +27,43 @@ export type VnpayRefundDto = {
 };
 
 export const paymentService = {
-  // Create VNPay URL and redirect the browser
-  async payOrderWithVnpay(orderId: number, req: VnpayRequestDto = {}): Promise<void> {
+  // Create VNPay URL for order payment
+  async payOrderWithVnpay(orderId: number, req: VnpayRequestDto = {}): Promise<string> {
     const { data } = await api.post(`/api/payments/orders/${orderId}/vnpay-url`, req);
     const url = typeof data === 'string' ? data : data?.url;
-    if (url) window.location.href = url;
+    if (!url) throw new Error('Không nhận được payment URL');
+    return url;
+  },
+
+  // Create VNPay URL for wallet top-up (NEW) ⭐
+  async topupWalletWithVnpay(walletId: number, req: WalletTopupRequestDto): Promise<string> {
+    const { data } = await api.post(`/api/payments/wallets/${walletId}/topup`, req);
+    const url = typeof data === 'string' ? data : data?.url;
+    if (!url) throw new Error('Không nhận được payment URL');
+    return url;
+  },
+
+  // Create VNPay URL for transaction payment (NEW) ⭐
+  async payTransactionWithVnpay(transactionId: number, req: VnpayRequestDto = {}): Promise<string> {
+    const { data } = await api.post(`/api/payments/transactions/${transactionId}/vnpay-url`, req);
+    const url = typeof data === 'string' ? data : data?.url;
+    if (!url) throw new Error('Không nhận được payment URL');
+    return url;
   },
 
   // Get payments by order
   getByOrder(orderId: number) {
     return api.get(`/api/payments/orders/${orderId}`);
+  },
+
+  // Get payment by ID
+  getById(paymentId: number) {
+    return api.get(`/api/payments/${paymentId}`);
+  },
+
+  // Get all payments (Admin only)
+  getAll() {
+    return api.get('/api/payments');
   },
 
   // Admin: query transaction status from VNPay

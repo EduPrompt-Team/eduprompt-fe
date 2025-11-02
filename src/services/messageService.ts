@@ -1,59 +1,45 @@
 import { api } from '@/lib/api'
-
-export interface Message {
-  messageId: number
-  conversationId: number
-  content: string
-  isUserMessage: boolean
-  createdAt: string
-  [key: string]: any
-}
-
-export interface CreateMessageRequest {
-  conversationId: number
-  content: string
-  isUserMessage: boolean
-}
+import type { MessageDto } from '@/types/dto/conversation'
 
 class MessageService {
-  // POST /api/Message
-  async sendMessage(request: CreateMessageRequest): Promise<Message> {
-    const { data } = await api.post('/api/Message', request)
+  // POST /api/messages
+  async send(payload: Omit<MessageDto, 'messageId' | 'sentAt' | 'isRead' | 'status'> & { status?: string }): Promise<MessageDto> {
+    const { data } = await api.post('/api/messages', payload)
     return data
   }
 
-  // GET /api/Message/{id}
-  async getMessageById(id: number): Promise<Message> {
-    const { data } = await api.get(`/api/Message/${id}`)
+  // GET /api/messages/{id}
+  async getById(id: number): Promise<MessageDto> {
+    const { data } = await api.get(`/api/messages/${id}`)
     return data
   }
 
-  // PUT /api/Message/{id}
-  async updateMessage(id: number, request: Partial<CreateMessageRequest>): Promise<Message> {
-    const { data } = await api.put(`/api/Message/${id}`, request)
+  // PUT /api/messages/{id}
+  async update(id: number, payload: Partial<Pick<MessageDto, 'content' | 'status' | 'isRead'>>): Promise<MessageDto> {
+    const { data } = await api.put(`/api/messages/${id}`, payload)
     return data
   }
 
-  // DELETE /api/Message/{id}
-  async deleteMessage(id: number): Promise<void> {
-    await api.delete(`/api/Message/${id}`)
+  // DELETE /api/messages/{id}
+  async remove(id: number): Promise<void> {
+    await api.delete(`/api/messages/${id}`)
   }
 
-  // GET /api/Message/conversation/{ConversationId}
-  async getMessagesByConversationId(conversationId: number): Promise<Message[]> {
-    const { data } = await api.get(`/api/Message/conversation/${conversationId}`)
+  // GET /api/messages/conversation/{ConversationId}
+  async getByConversation(conversationId: number): Promise<MessageDto[]> {
+    const { data } = await api.get(`/api/messages/conversation/${conversationId}`)
     return data
   }
 
-  // GET /api/Message/conversation/{ConversationId}/last
-  async getLastMessage(conversationId: number): Promise<Message> {
-    const { data } = await api.get(`/api/Message/conversation/${conversationId}/last`)
+  // GET /api/messages/conversation/{ConversationId}/last
+  async getLast(conversationId: number): Promise<MessageDto> {
+    const { data } = await api.get(`/api/messages/conversation/${conversationId}/last`)
     return data
   }
 
-  // GET /api/Message/conversation/{ConversationId}/recent
-  async getRecentMessages(conversationId: number): Promise<Message[]> {
-    const { data } = await api.get(`/api/Message/conversation/${conversationId}/recent`)
+  // GET /api/messages/conversation/{ConversationId}/recent
+  async getRecent(conversationId: number): Promise<MessageDto[]> {
+    const { data } = await api.get(`/api/messages/conversation/${conversationId}/recent`)
     return data
   }
 }

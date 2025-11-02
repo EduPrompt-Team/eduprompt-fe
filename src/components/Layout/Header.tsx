@@ -21,8 +21,8 @@ const Header: React.FC = () => {
         </Link>
 
         <nav className="hidden md:flex items-center gap-2 ml-auto slide-up anim-delay-200">
-          <NavLink to="/Create" className={(props) => navItemClass(props) + ' tilt-hover'}>
-            Tạo Prompt
+          <NavLink to="/packages" className={(props) => navItemClass(props) + ' tilt-hover'}>
+            Gói Prompt
           </NavLink>
           <NavLink to="/Hire" className={(props) => navItemClass(props) + ' tilt-hover'}>
            Mua Prompt 

@@ -1,6 +1,8 @@
 import React from 'react'
-import { User, ShoppingBag, Heart, ChevronDown } from 'lucide-react'
+import { getCurrentUser, fetchCurrentUser, clearTokens, setCurrentUser } from '@/lib/api'
+import { User, ShoppingBag, Heart, ChevronDown, Shield, Wallet, Package } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { checkIsAdmin } from '@/utils/auth'
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -8,9 +10,53 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-[#3a3a5a] text-white' : 'text-neutral-300 hover:text-white',
   ].join(' ')
 
-const HeaderHomepage: React.FC = () => {
+const HeaderGrade: React.FC = () => {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [user, setUser] = React.useState<any | null>(() => getCurrentUser())
+
+  // Check user on mount and periodically/on storage change
+  React.useEffect(() => {
+    // Initial check
+    const checkUser = () => {
+      const currentUser = getCurrentUser()
+      const hasToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
+      
+      if (!currentUser && hasToken) {
+        // Try to fetch user if we have token but no user in cache
+        fetchCurrentUser().then(setUser).catch(() => setCurrentUser(null))
+      } else if (currentUser) {
+        // Update if user exists in cache
+        setUser(currentUser)
+      } else {
+        // Clear if no user and no token
+        setUser(null)
+      }
+    }
+    
+    checkUser()
+    
+    // Check periodically (every 2 seconds) to catch login state changes
+    const interval = setInterval(checkUser, 2000)
+    
+    // Also listen for storage changes (when user logs in from another tab/window)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'accessToken' || e.key === 'currentUser' || e.key === 'refreshToken') {
+        checkUser()
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Listen for custom login event (if triggered after login)
+    const handleLogin = () => checkUser()
+    window.addEventListener('user-logged-in', handleLogin)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('user-logged-in', handleLogin)
+    }
+  }, [])
 
   const handleLogin = () => {
     navigate('/login')
@@ -82,8 +128,8 @@ const HeaderHomepage: React.FC = () => {
         </div>
             {/* Center: Navigation + Category + Search */}
             <nav className="hidden lg:flex items-center gap-2 ml-4">
-          <NavLink to="/Create" className={navItemClass}>
-            Tạo Prompt
+          <NavLink to="/packages" className={navItemClass}>
+            Gói Prompt
           </NavLink>
           <NavLink to="/Hire" className={navItemClass}>
             Mua Prompt
@@ -95,12 +141,14 @@ const HeaderHomepage: React.FC = () => {
 
         {/* Right: actions */}
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={handleLogin}
-            className="hidden md:inline-flex h-10 items-center justify-center rounded-full bg-white text-[#23233a] px-4 text-sm font-semibold hover:bg-white/90"
-          >
-            Đăng nhập
-          </button>
+          {!user && (
+            <button
+              onClick={handleLogin}
+              className="hidden md:inline-flex h-10 items-center justify-center rounded-full bg-white text-[#23233a] px-4 text-sm font-semibold hover:bg-white/90"
+            >
+              Đăng nhập
+            </button>
+          )}
 
         <button
           type="button"
@@ -140,19 +188,48 @@ const HeaderHomepage: React.FC = () => {
 
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-[#2f2f4a] bg-[#23233a] shadow-xl p-2 z-50">
-              <button onClick={() => { setMenuOpen(false); navigate('/profile') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
-                <User className="h-5 w-5" />
-                <span>Thông tin cá nhân</span>
-              </button>
-              <button onClick={() => { setMenuOpen(false); navigate('/mystorage') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
-                <ShoppingBag className="h-5 w-5" />
-                <span>Kho Prompt</span>
-              </button>
-              <button onClick={() => { setMenuOpen(false); navigate('/myfavorites') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
-                <Heart className="h-5 w-5" />
-                <span>Prompt yêu thích</span>
-              </button>
-              
+              {user ? (
+                <>
+                  <button onClick={() => { setMenuOpen(false); navigate('/profile') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <User className="h-5 w-5" />
+                    <span>Thông tin cá nhân</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/wallet') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <Wallet className="h-5 w-5" />
+                    <span>Ví cá nhân</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/mystorage') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <ShoppingBag className="h-5 w-5" />
+                    <span>Kho Prompt</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/myfavorites') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <Heart className="h-5 w-5" />
+                    <span>Prompt yêu thích</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/my-packages') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <Package className="h-5 w-5" />
+                    <span>Quản lý gói</span>
+                  </button>
+                  
+                  {/* Admin Dashboard - Only visible to Admin users */}
+                  {checkIsAdmin(user) && (
+                    <div className="border-t border-[#2f2f4a] my-2">
+                      <button onClick={() => { setMenuOpen(false); navigate('/admin/dashboard') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-400 hover:bg-[#2c2c48]">
+                        <Shield className="h-5 w-5" />
+                        <span>Admin Dashboard</span>
+                      </button>
+                    </div>
+                  )}
+                  
+                  <button onClick={() => { clearTokens(); setCurrentUser(null); setUser(null); setMenuOpen(false); navigate('/') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                    <span>Đăng xuất</span>
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => { setMenuOpen(false); handleLogin() }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                  <span>Đăng nhập</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -162,6 +239,6 @@ const HeaderHomepage: React.FC = () => {
   )
 }
 
-export default HeaderHomepage
+export default HeaderGrade
 
 

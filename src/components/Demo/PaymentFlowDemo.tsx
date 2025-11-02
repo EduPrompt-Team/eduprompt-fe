@@ -7,12 +7,10 @@ const PaymentFlowDemo: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
 
   const steps = [
-    { id: 1, name: 'Shopping Cart', path: '/cart', description: 'Add items to cart and manage quantities' },
-    { id: 2, name: 'Checkout', path: '/checkout', description: 'Review order and select payment method' },
+    { id: 1, name: 'Packages', path: '/packages', description: 'Browse and select packages' },
+    { id: 2, name: 'Wallet Top-up', path: '/wallet/topup', description: 'Top up wallet to purchase packages' },
     { id: 3, name: 'Payment', path: '/payment', description: 'Process payment with selected method' },
-    { id: 4, name: 'Confirmation', path: '/order-confirmation', description: 'View order confirmation and details' },
-    { id: 5, name: 'Order History', path: '/order-history', description: 'Track and manage your orders' },
-    { id: 6, name: 'Wallet', path: '/wallet', description: 'Manage wallet balance and transactions' }
+    { id: 4, name: 'Wallet', path: '/wallet', description: 'Manage wallet balance and transactions' }
   ];
 
   const mockCartData = mockData.mockCart;

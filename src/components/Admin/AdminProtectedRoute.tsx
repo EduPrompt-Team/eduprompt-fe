@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '@/lib/api';
 import { checkIsAdmin } from '@/utils/auth';
+import { useToast } from '@/components/ui/toast';
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface AdminProtectedRouteProps {
  */
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const user = getCurrentUser();
 
   useEffect(() => {
@@ -24,10 +26,10 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
 
     if (!checkIsAdmin(user)) {
       // User is not admin, redirect to home
-      alert('Bạn không có quyền truy cập trang quản trị!');
+      showToast('Bạn không có quyền truy cập trang quản trị!', 'warning');
       navigate('/home');
     }
-  }, [navigate]);
+  }, [navigate, showToast]);
 
   // Don't render children if not admin or not logged in
   if (!user || !checkIsAdmin(user)) {

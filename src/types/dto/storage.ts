@@ -5,6 +5,11 @@ export interface StorageTemplateDto {
   templateName: string
   isFavorite: boolean
   createdAt: string
+  templateContent?: string | null
+  grade?: string | null
+  subject?: string | null
+  chapter?: string | null
+  isPublic: boolean
 }
 
 export interface TemplateArchitectureDto {

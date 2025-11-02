@@ -14,9 +14,16 @@ const NonAdminOnlyRoute: React.FC<NonAdminOnlyRouteProps> = ({ children }) => {
 
   useEffect(() => {
     const u = getCurrentUser();
+    console.log('[NonAdminOnlyRoute] Checking user:', { 
+      hasUser: !!u, 
+      isAdmin: u ? checkIsAdmin(u) : false,
+      roleId: u?.roleId,
+      currentPath: window.location.pathname 
+    });
     if (u && checkIsAdmin(u)) {
       // Admin should not access user routes
-      navigate('/admin/dashboard');
+      console.log('[NonAdminOnlyRoute] Admin detected, redirecting to /admin/dashboard');
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [navigate]);
 

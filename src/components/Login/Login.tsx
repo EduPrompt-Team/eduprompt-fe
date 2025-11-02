@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, setTokens, fetchCurrentUser, setRemember } from '@/lib/api'
 import { GoogleLogin } from '@react-oauth/google'
+import { useToast } from '@/components/ui/toast'
 
 function GoogleIcon() {
 	return (
@@ -16,6 +17,7 @@ function GoogleIcon() {
 
 const Login: React.FC = () => {
 	const navigate = useNavigate()
+	const { showToast } = useToast()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [submitting, setSubmitting] = useState(false)
@@ -39,7 +41,7 @@ const Login: React.FC = () => {
   }, [])
     const handleEmailPasswordLogin = async () => {
         if (!email || !password) {
-            alert('Vui lòng nhập email và mật khẩu')
+            showToast('Vui lòng nhập email và mật khẩu', 'warning')
             return
         }
         setSubmitting(true)
@@ -49,6 +51,8 @@ const Login: React.FC = () => {
             // Backend trả về TokenResponseDto { accessToken, refreshToken }
             setTokens(data.accessToken, data.refreshToken)
             await fetchCurrentUser()
+            // Trigger custom event to notify headers/user components
+            window.dispatchEvent(new CustomEvent('user-logged-in'))
             // Persist remember choices
             try {
               if (remember) {
@@ -62,7 +66,7 @@ const Login: React.FC = () => {
             navigate('/home', { replace: true })
         } catch (e: any) {
             const message = e?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
-            alert(message)
+            showToast(message, 'error')
         } finally {
             setSubmitting(false)
         }
@@ -87,13 +91,15 @@ const Login: React.FC = () => {
                               const { data } = await api.post('/api/auth/google-login', { idToken })
                               setTokens(data.accessToken, data.refreshToken)
                               await fetchCurrentUser()
+                              // Trigger custom event to notify headers/user components
+                              window.dispatchEvent(new CustomEvent('user-logged-in'))
                               navigate('/home', { replace: true })
                             } catch (e) {
                               console.error(e)
-                              alert('Đăng nhập Google thất bại')
+                              showToast('Đăng nhập Google thất bại', 'error')
                             }
                           }}
-                          onError={() => alert('Google Login lỗi')}
+                          onError={() => showToast('Google Login lỗi', 'error')}
                         />
                     </div>
                     <div className="flex items-center gap-4 px-2 slide-up anim-delay-200">

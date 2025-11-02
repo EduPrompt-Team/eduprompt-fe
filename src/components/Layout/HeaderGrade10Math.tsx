@@ -1,5 +1,5 @@
 import React from 'react'
-import { User, ShoppingBag, Heart, ChevronDown } from 'lucide-react'
+import { User, ShoppingBag, Heart, ChevronDown, Wallet, Package } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
@@ -96,8 +96,8 @@ const HeaderHomepage: React.FC = () => {
         </div>
             {/* Center: Navigation + Category + Search */}
             <nav className="hidden lg:flex items-center gap-2 ml-4">
-          <NavLink to="/Create" className={navItemClass}>
-            Tạo Prompt
+          <NavLink to="/packages" className={navItemClass}>
+            Gói Prompt
           </NavLink>
           <NavLink to="/Hire" className={navItemClass}>
             Mua Prompt
@@ -158,6 +158,10 @@ const HeaderHomepage: React.FC = () => {
                 <User className="h-5 w-5" />
                 <span>Thông tin cá nhân</span>
               </button>
+              <button onClick={() => { setMenuOpen(false); navigate('/wallet') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                <Wallet className="h-5 w-5" />
+                <span>Ví cá nhân</span>
+              </button>
               <button onClick={() => { setMenuOpen(false); navigate('/mystorage') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <ShoppingBag className="h-5 w-5" />
                 <span>Kho Prompt</span>
@@ -165,6 +169,10 @@ const HeaderHomepage: React.FC = () => {
               <button onClick={() => { setMenuOpen(false); navigate('/myfavorites') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <Heart className="h-5 w-5" />
                 <span>Prompt yêu thích</span>
+              </button>
+              <button onClick={() => { setMenuOpen(false); navigate('/my-packages') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                <Package className="h-5 w-5" />
+                <span>Quản lý gói</span>
               </button>
               
             </div>

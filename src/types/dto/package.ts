@@ -7,7 +7,7 @@ export interface PackageDto {
   description?: string | null
   price: number
   durationDays?: number | null
-  isActive: PackageActiveFlag | boolean
+  isActive: boolean
   createdDate: string
 }
 

@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import router from './router/ProtectRouter'
+import { ToastProvider } from './components/ui/toast'
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
 
@@ -14,7 +15,9 @@ console.log('ORIGIN =', location.origin)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={clientId}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </GoogleOAuthProvider>
   </StrictMode>,
 )

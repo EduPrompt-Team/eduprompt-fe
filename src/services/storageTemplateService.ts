@@ -53,9 +53,15 @@ class StorageTemplateService {
   }
 
   // GET /api/storage-templates/check/{PackageId}
+  // Backend returns: { packageId: number, isInStorage: boolean }
   async checkTemplateSaved(packageId: number): Promise<boolean> {
     const { data } = await api.get(`/api/storage-templates/check/${packageId}`)
-    return data
+    // Backend returns object: { packageId, isInStorage }
+    // Extract isInStorage field
+    if (typeof data === 'boolean') {
+      return data // Backward compatibility if backend returns boolean directly
+    }
+    return data?.isInStorage ?? false
   }
 
   // GET /api/storage-templates/my-storage

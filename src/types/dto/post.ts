@@ -12,6 +12,7 @@ export interface PostDto {
   postType?: string | null
   tags?: string | null
   likeCount: number
+  templateArchitectureId?: number | null
 }
 
 

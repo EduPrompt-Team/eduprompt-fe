@@ -10,14 +10,10 @@ import MyProfilePage from '@/components/Page/MyProfilePage'
 import PromptBarStoragePage from '@/components/Page/PromptBarStoragePage'
 import FavoritesPromptPage from '@/components/Page/FavoritesPromptPage'
 import PaymentPage from '@/components/Page/PaymentPage'
+import PaymentPrompt from '@/components/Payment/PaymentPrompt'
 import PromptTemplate10Chuong1Page from '@/components/Page/Math10/PromptTemplate10Chuong1Page'
-import ShoppingCartPage from '@/components/Page/ShoppingCartPage'
-import CheckoutPage from '@/components/Page/CheckoutPage'
-import OrderConfirmationPage from '@/components/Page/OrderConfirmationPage'
-import OrderHistoryPage from '@/components/Page/OrderHistoryPage'
 import WalletPage from '@/components/Page/WalletPage'
 import PaymentFlowDemo from '@/components/Demo/PaymentFlowDemo'
-import PackageDetailPage from '@/components/Page/PackageDetailPage'
 import PromptTemplate10Chuong2Page from '@/components/Page/Math10/PromptTemplate10Chuong2Page'
 import PromptMath10Chuong2Detail from '@/components/PromptGrade/PromptSubject10/PromptSubject10Details/PromptMath10Chuong2Detail'
 import PromptChatMath10Chuong1Page from '@/components/Page/Math10/PromptChatMath10Chuong1Page'
@@ -26,6 +22,9 @@ import AdminProtectedRoute from '@/components/Admin/AdminProtectedRoute'
 import AdminHeader from '@/components/Admin/AdminHeader'
 import AdminViewProfilePage from '@/components/Admin/AdminViewProfilePage'
 import PackagePage from '@/components/Package/PackagePage'
+import MyPackagesPage from '@/components/Page/MyPackagesPage'
+import Grade10SubjectDetailRouter from '../components/Page/Grade10SubjectDetailRouter'
+import DynamicSubjectDetailRouter from '@/components/Page/DynamicSubjectDetailRouter'
 import NonAdminOnlyRoute from '@/components/Admin/NonAdminOnlyRoute'
 
 export const router = createBrowserRouter([
@@ -46,18 +45,17 @@ export const router = createBrowserRouter([
 	{ path: '/grade10/math/detail/chuong1/chat', element: (<NonAdminOnlyRoute><PromptChatMath10Chuong1Page /></NonAdminOnlyRoute>) },
 	{ path: '/grade10/math/detail/chuong2', element: (<NonAdminOnlyRoute><PromptTemplate10Chuong2Page /></NonAdminOnlyRoute>) },
 	{ path: '/grade10/math/detail2', element: (<NonAdminOnlyRoute><PromptMath10Chuong2Detail /></NonAdminOnlyRoute>) },
-	// Shopping Cart & Checkout Flow
-	{ path: '/cart', element: (<NonAdminOnlyRoute><ShoppingCartPage /></NonAdminOnlyRoute>) },
-	{ path: '/checkout', element: (<NonAdminOnlyRoute><CheckoutPage /></NonAdminOnlyRoute>) },
-	{ path: '/order-confirmation', element: (<NonAdminOnlyRoute><OrderConfirmationPage /></NonAdminOnlyRoute>) },
-	{ path: '/order-history', element: (<NonAdminOnlyRoute><OrderHistoryPage /></NonAdminOnlyRoute>) },
 	{ path: '/wallet', element: (<NonAdminOnlyRoute><WalletPage /></NonAdminOnlyRoute>) },
+	{ path: '/wallet/topup', element: (<NonAdminOnlyRoute><PaymentPrompt /></NonAdminOnlyRoute>) },
 	// Demo & Testing
 	{ path: '/payment-demo', element: (<NonAdminOnlyRoute><PaymentFlowDemo /></NonAdminOnlyRoute>) },
 	// Avoid Vite's internal /package (serves package.json as ESM); use /packages instead
 	{ path: '/packages', element: (<NonAdminOnlyRoute><PackagePage /></NonAdminOnlyRoute>) },
-	// Package Details
-	{ path: '/package/:id', element: (<NonAdminOnlyRoute><PackageDetailPage /></NonAdminOnlyRoute>) },
+	{ path: '/my-packages', element: (<NonAdminOnlyRoute><MyPackagesPage /></NonAdminOnlyRoute>) },
+	// Grade 10 subject dynamic chapter route (backward compatibility for math)
+	{ path: '/grade10/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><Grade10SubjectDetailRouter /></NonAdminOnlyRoute>) },
+	// Dynamic routes for all grades and subjects (10, 11, 12)
+	{ path: '/grade/:grade/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
 	// Admin Dashboard - Protected by role
 	{ 
 		path: '/admin/dashboard', 

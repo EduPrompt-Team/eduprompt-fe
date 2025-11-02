@@ -121,6 +121,16 @@ export const PackageActiveFlag = {
 } as const
 export type PackageActiveFlag = typeof PackageActiveFlag[keyof typeof PackageActiveFlag]
 
+// 14. PAYMENT STATUS
+export const PaymentStatus = {
+  Pending: 'Pending',      // Chờ xử lý - Khi tạo Payment record lần đầu, đang chờ user thanh toán trên VNPay
+  Paid: 'Paid',            // Đã thanh toán - Khi VNPay callback thành công (vnp_ResponseCode = "00")
+  Failed: 'Failed',        // Thanh toán thất bại - Signature không hợp lệ hoặc vnp_ResponseCode != "00"
+  Refunded: 'Refunded',    // Đã hoàn tiền - Khi admin thực hiện refund qua VNPay
+  Cancelled: 'Cancelled',  // Đã hủy - Khi admin/user hủy payment
+} as const
+export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus]
+
 // Re-export as a single namespace-like object (optional convenience)
 export const Status = {
   UserStatus,
@@ -136,6 +146,7 @@ export const Status = {
   PostStatus,
   FeedbackStatus,
   PackageActiveFlag,
+  PaymentStatus,
 }
 
 export type AnyStatus =
@@ -151,5 +162,22 @@ export type AnyStatus =
   | `${PromptInstanceStatus}`
   | `${PostStatus}`
   | `${FeedbackStatus}`
+  | `${PaymentStatus}`
+
+// Defaults per DB notes
+export const DefaultStatus = {
+  User: UserStatus.Active,
+  Wallet: WalletStatus.Active,
+  Cart: CartStatus.Active,
+  Conversation: ConversationStatus.Active,
+  Feedback: FeedbackStatus.Active,
+  Message: MessageStatus.Sent,
+  Order: OrderStatus.Pending,
+  Post: PostStatus.Published,
+  PromptInstance: PromptInstanceStatus.Completed,
+  AIHistory: AIHistoryStatus.Completed,
+  Transaction: TransactionStatus.Pending,
+  Payment: PaymentStatus.Pending, // Payment default status per backend
+} as const
 
 

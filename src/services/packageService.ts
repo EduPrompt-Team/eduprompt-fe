@@ -15,6 +15,8 @@ export interface CreatePackageRequest {
   description?: string
   price: number
   categoryId?: number
+  durationDays?: number
+  durationMonths?: number
 }
 
 export interface UpdatePackageRequest {
@@ -23,61 +25,63 @@ export interface UpdatePackageRequest {
   price?: number
   isActive?: boolean
   categoryId?: number
+  durationDays?: number
+  durationMonths?: number
 }
 
 class PackageService {
-  // GET /api/Package
+  // GET /api/packages
   async getAllPackages(): Promise<Package[]> {
-    const { data } = await api.get('/api/Package')
+    const { data } = await api.get('/api/packages')
     return data
   }
 
-  // POST /api/Package
+  // POST /api/packages
   async createPackage(request: CreatePackageRequest): Promise<Package> {
-    const { data } = await api.post('/api/Package', request)
+    const { data } = await api.post('/api/packages', request)
     return data
   }
 
-  // GET /api/Package/{PackageId}
+  // GET /api/packages/{PackageId}
   async getPackageById(packageId: number): Promise<Package> {
-    const { data } = await api.get(`/api/Package/${packageId}`)
+    const { data } = await api.get(`/api/packages/${packageId}`)
     return data
   }
 
-  // PUT /api/Package/{PackageId}
+  // PUT /api/packages/{PackageId}
   async updatePackage(packageId: number, request: UpdatePackageRequest): Promise<Package> {
-    const { data } = await api.put(`/api/Package/${packageId}`, request)
+    const { data } = await api.put(`/api/packages/${packageId}`, request)
     return data
   }
 
-  // DELETE /api/Package/{PackageId}
+  // DELETE /api/packages/{PackageId}
   async deletePackage(packageId: number): Promise<void> {
-    await api.delete(`/api/Package/${packageId}`)
+    await api.delete(`/api/packages/${packageId}`)
   }
 
-  // GET /api/Package/active
+  // GET /api/packages/active
   async getActivePackages(): Promise<Package[]> {
-    const { data } = await api.get('/api/Package/active')
+    const { data } = await api.get('/api/packages/active')
     return data
   }
 
-  // GET /api/Package/category/{CategoryId}
+  // GET /api/packages/category/{CategoryId}
   async getPackagesByCategory(categoryId: number): Promise<Package[]> {
-    const { data } = await api.get(`/api/Package/category/${categoryId}`)
+    const { data } = await api.get(`/api/packages/category/${categoryId}`)
     return data
   }
 
-  // GET /api/Package/price-range
+  // GET /api/packages/price-range
   async getPackagesByPriceRange(minPrice: number, maxPrice: number): Promise<Package[]> {
-    const { data } = await api.get('/api/Package/price-range', {
+    const { data } = await api.get('/api/packages/price-range', {
       params: { minPrice, maxPrice }
     })
     return data
   }
 
-  // GET /api/Package/search
+  // GET /api/packages/search
   async searchPackages(searchTerm: string): Promise<Package[]> {
-    const { data } = await api.get('/api/Package/search', {
+    const { data } = await api.get('/api/packages/search', {
       params: { searchTerm }
     })
     return data

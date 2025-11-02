@@ -1,4 +1,4 @@
-import { ConversationStatus } from '@/types/status'
+import { ConversationStatus, MessageStatus } from '@/types/status'
 
 export interface ConversationDto {
   conversationId: number
@@ -7,6 +7,16 @@ export interface ConversationDto {
   startedAt: string
   lastActivity?: string | null
   status?: ConversationStatus | null
+}
+
+export interface MessageDto {
+  messageId: number
+  conversationId: number
+  senderType: string
+  content: string
+  sentAt: string
+  isRead: boolean
+  status?: MessageStatus | null
 }
 
 

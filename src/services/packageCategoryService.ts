@@ -14,44 +14,44 @@ export interface CreatePackageCategoryRequest {
 }
 
 class PackageCategoryService {
-  // GET /api/PackageCategory
+  // GET /api/package-categories
   async getAllCategories(): Promise<PackageCategory[]> {
-    const { data } = await api.get('/api/PackageCategory')
+    const { data } = await api.get('/api/package-categories')
     return data
   }
 
-  // POST /api/PackageCategory
+  // POST /api/package-categories
   async createCategory(request: CreatePackageCategoryRequest): Promise<PackageCategory> {
-    const { data } = await api.post('/api/PackageCategory', request)
+    const { data } = await api.post('/api/package-categories', request)
     return data
   }
 
-  // GET /api/PackageCategory/{id}
+  // GET /api/package-categories/{id}
   async getCategoryById(id: number): Promise<PackageCategory> {
-    const { data } = await api.get(`/api/PackageCategory/${id}`)
+    const { data } = await api.get(`/api/package-categories/${id}`)
     return data
   }
 
-  // PUT /api/PackageCategory/{id}
+  // PUT /api/package-categories/{id}
   async updateCategory(id: number, request: Partial<CreatePackageCategoryRequest>): Promise<PackageCategory> {
-    const { data } = await api.put(`/api/PackageCategory/${id}`, request)
+    const { data } = await api.put(`/api/package-categories/${id}`, request)
     return data
   }
 
-  // DELETE /api/PackageCategory/{id}
+  // DELETE /api/package-categories/{id}
   async deleteCategory(id: number): Promise<void> {
-    await api.delete(`/api/PackageCategory/${id}`)
+    await api.delete(`/api/package-categories/${id}`)
   }
 
-  // GET /api/PackageCategory/{id}/package-count
+  // GET /api/package-categories/{id}/package-count
   async getPackageCountByCategory(id: number): Promise<number> {
-    const { data } = await api.get(`/api/PackageCategory/${id}/package-count`)
+    const { data } = await api.get(`/api/package-categories/${id}/package-count`)
     return data
   }
 
-  // GET /api/PackageCategory/active
+  // GET /api/package-categories/active
   async getActiveCategories(): Promise<PackageCategory[]> {
-    const { data } = await api.get('/api/PackageCategory/active')
+    const { data } = await api.get('/api/package-categories/active')
     return data
   }
 }

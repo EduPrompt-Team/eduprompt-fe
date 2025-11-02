@@ -38,8 +38,8 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({ packageId, className 
       setTimeout(() => setSuccess(false), 2000);
       window.dispatchEvent(new CustomEvent('cartUpdated'));
       
-      // Show a more user-friendly message
-      alert('Item added to cart (using mock data - API not available)');
+      // Show a more user-friendly message - Toast will be handled by parent component if needed
+      console.log('Item added to cart (using mock data - API not available)');
     } finally {
       setLoading(false);
     }

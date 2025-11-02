@@ -326,12 +326,12 @@ const PaymentPage: React.FC = () => {
                   </Button>
                   
                   <Button
-                    onClick={() => navigate('/checkout')}
+                    onClick={() => navigate('/packages')}
                     variant="outline"
                     className="w-full"
                     disabled={processing}
                   >
-                    Back to Checkout
+                    Quay lại Packages
                   </Button>
                 </div>
               </div>
