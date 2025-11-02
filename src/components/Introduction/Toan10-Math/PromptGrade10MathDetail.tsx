@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../ui/button'
-import { Heart, Download, Eye, Check, Star, Edit2, Trash2, ThumbsUp, Reply, MoreVertical } from 'lucide-react'
+import { Heart, Download, Eye, Check, Star, Edit2, Trash2, MoreVertical } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { storageTemplateService } from '@/services/storageTemplateService'
 import { reviewService } from '@/services/reviewService'
@@ -809,23 +809,9 @@ const PromptGrade10MathDetail: React.FC = () => {
                           </p>
                         )}
                         
-                        {/* Action Buttons - YouTube Style */}
+                        {/* Action Buttons */}
                         {!isEditing && (
-                          <div className="flex items-center space-x-6 mt-2">
-                            {/* Like/Dislike - Simulated with rating */}
-                  <div className="flex items-center space-x-2">
-                              <button className="flex items-center space-x-1 hover:bg-[#2a2a44] rounded-full px-3 py-1.5 transition-colors group">
-                                <ThumbsUp className="w-5 h-5 text-neutral-400 group-hover:text-blue-400" />
-                                <span className="text-xs text-neutral-400">{review.rating}</span>
-                              </button>
-              </div>
-
-                            {/* Reply Button */}
-                            <button className="flex items-center space-x-1 hover:bg-[#2a2a44] rounded-full px-3 py-1.5 transition-colors">
-                              <Reply className="w-5 h-5 text-neutral-400" />
-                              <span className="text-xs text-neutral-400">Phản hồi</span>
-                            </button>
-                            
+                          <div className="flex items-center justify-end mt-2">
                             {/* Menu for owner */}
                             {isOwner && (
                               <div className="relative">
@@ -842,7 +828,7 @@ const PromptGrade10MathDetail: React.FC = () => {
                                       className="fixed inset-0 z-10"
                                       onClick={() => setShowMenuId(null)}
                                     />
-                                    <div className="absolute left-0 top-8 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg shadow-xl z-20 min-w-[160px]">
+                                    <div className="absolute right-0 bottom-full mb-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg shadow-xl z-20 min-w-[160px]">
                                       <button
                                         onClick={() => {
                                           startEditReview(review)
@@ -863,12 +849,12 @@ const PromptGrade10MathDetail: React.FC = () => {
                                         <Trash2 className="w-4 h-4" />
                                         <span>Xóa</span>
                                       </button>
-                  </div>
+                                    </div>
                                   </>
                                 )}
-                      </div>
+                              </div>
                             )}
-                    </div>
+                          </div>
                         )}
                     </div>
                   </div>

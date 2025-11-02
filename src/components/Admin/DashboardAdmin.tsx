@@ -2181,9 +2181,31 @@ const DashboardAdmin: React.FC = () => {
                                     onClick={async () => {
                                         try {
                                             setLoadingReviews(true)
-                                            const reviewsRes = await reviewService.getAllReviews().catch(() => [])
+                                            // Reload everything: reviews, templates, users
+                                            const [reviewsRes, publicTemplatesRes, myTemplatesRes, usersRes] = await Promise.all([
+                                                reviewService.getAllReviews().catch(() => []),
+                                                storageTemplateService.getPublicTemplates({}).catch(() => []),
+                                                storageTemplateService.getMyStorage().catch(() => []),
+                                                userService.getAllUsers().catch(() => []),
+                                            ])
+                                            
+                                            // Combine public and my-storage templates
+                                            const publicTemplates = Array.isArray(publicTemplatesRes) ? publicTemplatesRes : []
+                                            const myTemplates = Array.isArray(myTemplatesRes) ? myTemplatesRes : []
+                                            const allTemplatesList = [...publicTemplates, ...myTemplates]
+                                            // Remove duplicates by storageId
+                                            const uniqueTemplates = allTemplatesList.reduce((acc: any[], template: any) => {
+                                                const storageId = template.storageId || template.id
+                                                if (!acc.find((t: any) => (t.storageId || t.id) === storageId)) {
+                                                    acc.push(template)
+                                                }
+                                                return acc
+                                            }, [])
+                                            
                                             setReviews(Array.isArray(reviewsRes) ? reviewsRes : [])
-                                            showToast('Đã làm mới danh sách reviews', 'success')
+                                            setTemplates(uniqueTemplates)
+                                            setUsers(Array.isArray(usersRes) ? usersRes : [])
+                                            showToast(`Đã làm mới: ${reviewsRes?.length || 0} reviews, ${uniqueTemplates.length} templates, ${usersRes?.length || 0} users`, 'success')
                                         } catch (e) {
                                             showToast('Không thể làm mới danh sách reviews', 'error')
                                         } finally {
