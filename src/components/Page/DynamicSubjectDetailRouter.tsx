@@ -309,6 +309,9 @@ export default function DynamicSubjectDetailRouter() {
         storageId: selectedPrompt.storageId,
         rating: reviewForm.rating,
         comment: reviewForm.comment.trim(),
+        packageId: typeof (selectedPrompt as any)?.packageId === 'number'
+          ? (selectedPrompt as any).packageId
+          : (Number((selectedPrompt as any)?.packageId) || undefined),
       })
       
       setReviews(prev => [newReview, ...prev])

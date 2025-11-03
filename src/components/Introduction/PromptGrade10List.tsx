@@ -25,11 +25,11 @@ const PromptGrade10List: React.FC = () => {
     'Sinh học': 'biology',
   }
   
-  // Handler for subject navigation - navigate to subject detail page (first chapter by default)
+  // Handler for subject navigation - go to chapters page first
   const handleSubjectClick = (subjectName: string) => {
     const subjectKey = subjectKeyMap[subjectName] || subjectName.toLowerCase()
-    // Navigate to first chapter by default: /grade10/{subject}/detail/chuong1
-    navigate(`/grade10/${subjectKey}/detail/chuong1`)
+    // Navigate to chapters listing with new dynamic route: /grade/10/{subject}
+    navigate(`/grade/10/${subjectKey}`)
   }
 
 
@@ -150,7 +150,7 @@ const PromptGrade10List: React.FC = () => {
             <button
               key={feature.id}
               onClick={feature.onClick}
-              className="group relative bg-[#23233a] rounded-2xl border border-[#2a2a44] hover:border-[#3a3a54] transition-all duration-300 hover:scale-105 hover:shadow-2xl h-96 overflow-hidden w-full text-left"
+              className="group relative bg-[#23233a] rounded-2xl border border-[#2a2a44] hover:border-[#3a3a54] transition-all duration-300 ease-out hover:translate-y-1 hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.35)] h-96 overflow-hidden w-full text-left"
               style={{
                 animationDelay: `${index * 0.1}s`
               }}
@@ -188,7 +188,7 @@ const PromptGrade10List: React.FC = () => {
               {/* Hover Glow Border - thicker and larger */}
               <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-md`}></div>
               {/* Outer Glow Layer */}
-              <div className={`pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-60 transition-all duration-300 -z-10 blur-xl`}></div>
+              <div className={`pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-60 transition-all duration-500 -z-10 blur-xl`}></div>
             </button>
           ))}
         </div>

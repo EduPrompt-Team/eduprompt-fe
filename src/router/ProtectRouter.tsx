@@ -25,6 +25,7 @@ import PackagePage from '@/components/Package/PackagePage'
 import MyPackagesPage from '@/components/Page/MyPackagesPage'
 import Grade10SubjectDetailRouter from '../components/Page/Grade10SubjectDetailRouter'
 import DynamicSubjectDetailRouter from '@/components/Page/DynamicSubjectDetailRouter'
+import DynamicSubjectChaptersPage from '@/components/Page/DynamicSubjectChaptersPage'
 import NonAdminOnlyRoute from '@/components/Admin/NonAdminOnlyRoute'
 
 export const router = createBrowserRouter([
@@ -54,7 +55,15 @@ export const router = createBrowserRouter([
 	{ path: '/my-packages', element: (<NonAdminOnlyRoute><MyPackagesPage /></NonAdminOnlyRoute>) },
 	// Grade 10 subject dynamic chapter route (backward compatibility for math)
 	{ path: '/grade10/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><Grade10SubjectDetailRouter /></NonAdminOnlyRoute>) },
-	// Dynamic routes for all grades and subjects (10, 11, 12)
+// Backward-compatibility: allow /grade11/:subject/detail/:chapter and /grade12/:subject/detail/:chapter
+{ path: '/grade11/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
+{ path: '/grade12/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
+// Intermediate chapters page for a subject within a grade
+{ path: '/grade/:grade/:subject', element: (<NonAdminOnlyRoute><DynamicSubjectChaptersPage /></NonAdminOnlyRoute>) },
+// Backward-compatibility: chapters listing without /grade/ prefix
+{ path: '/grade11/:subject', element: (<NonAdminOnlyRoute><DynamicSubjectChaptersPage /></NonAdminOnlyRoute>) },
+{ path: '/grade12/:subject', element: (<NonAdminOnlyRoute><DynamicSubjectChaptersPage /></NonAdminOnlyRoute>) },
+// Dynamic routes for all grades and subjects (10, 11, 12)
 	{ path: '/grade/:grade/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
 	// Admin Dashboard - Protected by role
 	{ 

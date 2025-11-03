@@ -225,9 +225,8 @@ const DashboardAdmin: React.FC = () => {
         (async () => {
             try {
                 setLoadingReviews(true);
-                // Load reviews, templates (from both public and my-storage), and users
-                const [reviewsRes, publicTemplatesRes, myTemplatesRes, usersRes] = await Promise.all([
-                    reviewService.getAllReviews().catch(() => []),
+                // Load templates (from both public and my-storage), and users
+                const [publicTemplatesRes, myTemplatesRes, usersRes] = await Promise.all([
                     storageTemplateService.getPublicTemplates({}).catch(() => []),
                     storageTemplateService.getMyStorage().catch(() => []),
                     userService.getAllUsers().catch(() => []),
@@ -246,11 +245,21 @@ const DashboardAdmin: React.FC = () => {
                     }
                     return acc
                 }, [])
+
+                // Fetch reviews for each template explicitly (more reliable than service aggregation)
+                const reviewArrays = await Promise.all(
+                  uniqueTemplates.map((t: any) => {
+                    const sid = t.storageId || t.id
+                    if (!sid) return Promise.resolve([])
+                    return reviewService.getReviewsByStorageId(sid).catch(() => [])
+                  })
+                )
+                const combinedReviews = reviewArrays.flat()
                 
-                setReviews(Array.isArray(reviewsRes) ? reviewsRes : []);
+                setReviews(combinedReviews);
                 setTemplates(uniqueTemplates);
                 setUsers(Array.isArray(usersRes) ? usersRes : []);
-                console.log('[DashboardAdmin] Loaded reviews:', reviewsRes?.length || 0, 'templates:', uniqueTemplates.length, 'users:', usersRes?.length || 0)
+                console.log('[DashboardAdmin] Loaded reviews:', combinedReviews?.length || 0, 'templates:', uniqueTemplates.length, 'users:', usersRes?.length || 0)
             } catch (e: any) {
                 if (!mounted) return;
                 console.error('Failed to load reviews:', e);
@@ -2181,31 +2190,34 @@ const DashboardAdmin: React.FC = () => {
                                     onClick={async () => {
                                         try {
                                             setLoadingReviews(true)
-                                            // Reload everything: reviews, templates, users
-                                            const [reviewsRes, publicTemplatesRes, myTemplatesRes, usersRes] = await Promise.all([
-                                                reviewService.getAllReviews().catch(() => []),
-                                                storageTemplateService.getPublicTemplates({}).catch(() => []),
-                                                storageTemplateService.getMyStorage().catch(() => []),
-                                                userService.getAllUsers().catch(() => []),
+                                            // Reload: templates and users, then fetch reviews per template
+                                            const [publicTemplatesRes, myTemplatesRes, usersRes] = await Promise.all([
+                                              storageTemplateService.getPublicTemplates({}).catch(() => []),
+                                              storageTemplateService.getMyStorage().catch(() => []),
+                                              userService.getAllUsers().catch(() => []),
                                             ])
-                                            
-                                            // Combine public and my-storage templates
                                             const publicTemplates = Array.isArray(publicTemplatesRes) ? publicTemplatesRes : []
                                             const myTemplates = Array.isArray(myTemplatesRes) ? myTemplatesRes : []
                                             const allTemplatesList = [...publicTemplates, ...myTemplates]
-                                            // Remove duplicates by storageId
                                             const uniqueTemplates = allTemplatesList.reduce((acc: any[], template: any) => {
-                                                const storageId = template.storageId || template.id
-                                                if (!acc.find((t: any) => (t.storageId || t.id) === storageId)) {
-                                                    acc.push(template)
-                                                }
-                                                return acc
+                                              const storageId = template.storageId || template.id
+                                              if (!acc.find((t: any) => (t.storageId || t.id) === storageId)) acc.push(template)
+                                              return acc
                                             }, [])
-                                            
-                                            setReviews(Array.isArray(reviewsRes) ? reviewsRes : [])
+
+                                            const reviewArrays = await Promise.all(
+                                              uniqueTemplates.map((t: any) => {
+                                                const sid = t.storageId || t.id
+                                                if (!sid) return Promise.resolve([])
+                                                return reviewService.getReviewsByStorageId(sid).catch(() => [])
+                                              })
+                                            )
+                                            const combinedReviews = reviewArrays.flat()
+
+                                            setReviews(combinedReviews)
                                             setTemplates(uniqueTemplates)
                                             setUsers(Array.isArray(usersRes) ? usersRes : [])
-                                            showToast(`Đã làm mới: ${reviewsRes?.length || 0} reviews, ${uniqueTemplates.length} templates, ${usersRes?.length || 0} users`, 'success')
+                                            showToast(`Đã làm mới: ${combinedReviews.length} reviews, ${uniqueTemplates.length} templates, ${usersRes?.length || 0} users`, 'success')
                                         } catch (e) {
                                             showToast('Không thể làm mới danh sách reviews', 'error')
                                         } finally {

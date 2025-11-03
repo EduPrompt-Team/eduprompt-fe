@@ -1,7 +1,9 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 
 const PromptFeatures: React.FC = () => {
+  const navigate = useNavigate()
 
 
   const features = [
@@ -16,8 +18,8 @@ const PromptFeatures: React.FC = () => {
     },
     {
       id: 2,
-      title: "Tạo Prompt",
-      description: "Công cụ mạnh mẽ để tạo prompt AI chuyên nghiệp và hiệu quả",
+      title: "Gói Prompt",
+      description: "Danh sách các gói Prompt được tối ưu sẵn cho giáo dục",
       image: new URL('../../assets/Image/TaoPrompt.png', import.meta.url).href,
       gradient: "from-green-500 to-emerald-600",
       glowColor: "green-500",
@@ -55,6 +57,12 @@ const PromptFeatures: React.FC = () => {
               className="group relative bg-[#23233a] rounded-2xl border border-[#2a2a44] hover:border-[#3a3a54] transition-all duration-300 hover:scale-105 hover:shadow-2xl h-96 overflow-hidden w-full text-left"
               style={{
                 animationDelay: `${index * 0.1}s`
+              }}
+              onClick={() => {
+                // Logic tương tự header: chuyển sang trang packages khi chọn "Gói Prompt"
+                if (feature.id === 2) {
+                  navigate('/packages')
+                }
               }}
             >
               {/* Glow Effect */}

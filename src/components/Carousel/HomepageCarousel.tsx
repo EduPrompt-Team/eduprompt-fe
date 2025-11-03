@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const HomepageCarousel: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
+  const navigate = useNavigate()
   
   // Dữ liệu carousel - có thể thay đổi theo nhu cầu
   const slides = [
@@ -14,10 +16,10 @@ const HomepageCarousel: React.FC = () => {
     },
     {
       id: 2,
-      title: "Tạo Prompt Chuyên Nghiệp",
-      description: "Công cụ hỗ trợ tạo prompt AI hiệu quả cho từng môn học",
+      title: "Gói Prompt",
+      description: "Khám phá các gói Prompt đẹp và tối ưu sẵn",
       image: new URL('../../assets/Image/Carousel2.png', import.meta.url).href,
-      buttonText: "Bắt đầu tạo"
+      buttonText: "Xem gói"
     },
     {
       id: 3,
@@ -75,7 +77,12 @@ const HomepageCarousel: React.FC = () => {
                   <p className="text-lg md:text-xl text-gray-200 mb-8 slide-up anim-delay-100">
                     {slide.description}
                   </p>
-                  <button className="bg-gradient-to-r from-rose-400 to-orange-400 text-white px-8 py-4 rounded-xl font-semibold hover:from-rose-500 hover:to-orange-500 transition-all duration-300 hover:scale-105 active:scale-95 slide-up anim-delay-200">
+                  <button
+                    onClick={() => {
+                      if (slide.id === 2) navigate('/packages')
+                    }}
+                    className="bg-gradient-to-r from-rose-400 to-orange-400 text-white px-8 py-4 rounded-xl font-semibold hover:from-rose-500 hover:to-orange-500 transition-all duration-300 hover:scale-105 active:scale-95 slide-up anim-delay-200"
+                  >
                     {slide.buttonText}
                   </button>
                 </div>

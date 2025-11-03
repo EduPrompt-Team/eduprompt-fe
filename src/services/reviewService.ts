@@ -21,6 +21,7 @@ export interface CreateReviewRequest {
   storageId: number
   rating: number
   comment: string
+  packageId?: number
 }
 
 export interface UpdateReviewRequest {
@@ -52,8 +53,8 @@ function feedbackToReview(feedback: Feedback, storageId: number): Review {
  */
 function reviewToFeedbackRequest(request: CreateReviewRequest): CreateFeedbackRequest {
   return {
-    storageId: request.storageId,  // Recommended: Send storageId directly (backend supports this now)
-    // postId: request.storageId,  // Old way: Backend will map postId → storageId for backward compatibility
+    storageId: request.storageId,  // Preferred new field
+    packageId: request.packageId,
     comment: request.comment,     // Backend expects 'comment'
     rating: request.rating
   }
@@ -93,8 +94,38 @@ class ReviewService {
   // GET /api/reviews/storage/{storageId} -> Uses /api/Feedback/post/{postId}
   async getReviewsByStorageId(storageId: number): Promise<Review[]> {
     try {
-      const feedbacks = await feedbackService.getFeedbackByPostId(storageId)
-      return feedbacks.map(fb => feedbackToReview(fb, storageId))
+      const feedbacks: any = await feedbackService.getFeedbackByStorageId(storageId)
+      // Normalize and map only storage-based results
+      const array:
+        any[] = Array.isArray(feedbacks)
+          ? feedbacks
+          : (typeof feedbacks === 'object' && feedbacks !== null && 'feedbackId' in feedbacks)
+            ? [feedbacks]
+            : (typeof feedbacks === 'object' && feedbacks !== null && Array.isArray((feedbacks as any).items))
+              ? (feedbacks as any).items
+              : (typeof feedbacks === 'object' && feedbacks !== null && Array.isArray((feedbacks as any).data))
+                ? (feedbacks as any).data
+                : []
+
+      // Temporary safety net: if BE list unexpectedly empty, try legacy /post/{id}
+      if (!Array.isArray(array) || array.length === 0) {
+        try {
+          const legacy: any = await feedbackService.getFeedbackByPostId(storageId)
+          const legacyArr: any[] = Array.isArray(legacy)
+            ? legacy
+            : (legacy && typeof legacy === 'object' && 'feedbackId' in legacy) ? [legacy]
+            : (legacy && typeof legacy === 'object' && Array.isArray(legacy.items)) ? legacy.items
+            : (legacy && typeof legacy === 'object' && Array.isArray(legacy.data)) ? legacy.data
+            : []
+          if (legacyArr.length > 0) {
+            return legacyArr.map((fb: any) => feedbackToReview(fb, storageId))
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      return array.map(fb => feedbackToReview(fb, storageId))
     } catch (e: any) {
       // Return empty array on 404 (no reviews yet)
       if (e?.response?.status === 404) {
@@ -107,7 +138,7 @@ class ReviewService {
   // GET /api/reviews/storage/{storageId}/rating -> Uses /api/Feedback/post/{postId}/rating
   async getAverageRating(storageId: number): Promise<number> {
     try {
-      return await feedbackService.getAverageRating(storageId)
+      return await feedbackService.getAverageRatingByStorageId(storageId)
     } catch (e: any) {
       // Return 0 on 404 (no reviews yet)
       if (e?.response?.status === 404) {
@@ -120,7 +151,7 @@ class ReviewService {
   // GET /api/reviews/storage/{storageId}/count -> Uses /api/Feedback/post/{postId}/count
   async getReviewCount(storageId: number): Promise<number> {
     try {
-      return await feedbackService.getFeedbackCount(storageId)
+      return await feedbackService.getFeedbackCountByStorageId(storageId)
     } catch (e: any) {
       // Return 0 on 404 (no reviews yet)
       if (e?.response?.status === 404) {
@@ -146,17 +177,10 @@ class ReviewService {
   // GET /api/reviews/user/{userId}/storage/{storageId}
   // This needs to be implemented differently - get all user feedbacks and filter by postId
   async getUserReviewForStorage(userId: number, storageId: number): Promise<Review | null> {
-    try {
-      const feedbacks = await feedbackService.getFeedbackByUserId(userId)
-      const userFeedback = feedbacks.find(fb => fb.postId === storageId)
-      if (!userFeedback) return null
-      return feedbackToReview(userFeedback, storageId)
-    } catch (e: any) {
-      if (e?.response?.status === 404) {
-        return null
-      }
-      throw e
-    }
+    // Avoid extra endpoint: load by storageId then filter by user
+    const reviews = await this.getReviewsByStorageId(storageId)
+    const match = reviews.find(r => r.userId === userId) || null
+    return match
   }
 
   // GET /api/reviews (admin only - all reviews)
