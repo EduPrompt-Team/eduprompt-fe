@@ -9,7 +9,8 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string
   password: string
-  fullName?: string
+  fullName: string
+  phone?: string
 }
 
 export interface GoogleLoginRequest {
@@ -62,9 +63,9 @@ class AuthService {
     return data
   }
 
-  // POST /api/Auth/register
+  // POST /api/auth/register
   async register(request: RegisterRequest): Promise<TokenResponse> {
-    const { data } = await api.post('/api/Auth/register', request)
+    const { data } = await api.post('/api/auth/register', request)
     setTokens(data.accessToken, data.refreshToken)
     return data
   }
