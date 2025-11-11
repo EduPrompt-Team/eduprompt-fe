@@ -16,7 +16,13 @@ export const PayWithVnpayButton: React.FC<Props> = ({ orderId, bankCode, classNa
   const onClick = async () => {
     try {
       setLoading(true);
-      await paymentService.payOrderWithVnpay(orderId, { bankCode, returnUrl });
+      const url = await paymentService.payOrderWithVnpay(orderId, { bankCode, returnUrl });
+      // Redirect user to VNPay
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('Missing VNPay URL');
+      }
     } catch (e) {
       console.error('VNPay init error', e);
       showToast('Không khởi tạo được thanh toán VNPay. Vui lòng thử lại.', 'error');
