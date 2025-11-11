@@ -5,17 +5,30 @@ export interface Post {
   userId: number
   title: string
   content: string
-  postType: string
-  isPublished: boolean
-  createdAt: string
+  postType?: string
+  status?: string
+  tags?: string
+  viewCount: number
+  likeCount: number
+  createdDate: string
+  userName?: string
+  averageRating: number
+  feedbackCount: number
+  storageId?: number
+  price?: number
   [key: string]: any
 }
 
 export interface CreatePostRequest {
+  userId: number
   title: string
   content: string
-  postType: string
-  isPublished?: boolean
+  postType?: string
+  status?: string
+  tags?: string
+  storageId?: number
+  price?: number
+  templateArchitectureId?: number
 }
 
 export interface UpdatePostRequest {
@@ -34,6 +47,12 @@ class PostService {
   // POST /api/posts
   async createPost(request: CreatePostRequest): Promise<Post> {
     const { data } = await api.post('/api/posts', request)
+    return data
+  }
+
+  // POST /api/posts/{id}/purchase
+  async purchasePost(postId: number): Promise<{ storageId: number; promptInstanceId: number; message: string }> {
+    const { data } = await api.post(`/api/posts/${postId}/purchase`)
     return data
   }
 
