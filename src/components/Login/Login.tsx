@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, setTokens, fetchCurrentUser, setRemember } from '@/lib/api'
 import { GoogleLogin } from '@react-oauth/google'
 import { useToast } from '@/components/ui/toast'
+import { authService } from '@/services/authService'
 
 function GoogleIcon() {
 	return (
@@ -18,8 +19,11 @@ function GoogleIcon() {
 const Login: React.FC = () => {
 	const navigate = useNavigate()
 	const { showToast } = useToast()
+    const [isRegister, setIsRegister] = useState(true)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [fullName, setFullName] = useState('')
+    const [phone, setPhone] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [remember, setRememberState] = useState(false)
 
@@ -72,6 +76,30 @@ const Login: React.FC = () => {
         }
     }
 
+    const handleRegister = async () => {
+        if (!email || !password || !fullName) {
+            showToast('Vui lòng điền đầy đủ thông tin (Email, Mật khẩu, Họ tên)', 'warning')
+            return
+        }
+        if (password.length < 6) {
+            showToast('Mật khẩu phải có ít nhất 6 ký tự', 'warning')
+            return
+        }
+        setSubmitting(true)
+        try {
+            await authService.register({ email, password, fullName, phone: phone || undefined })
+            await fetchCurrentUser()
+            window.dispatchEvent(new CustomEvent('user-logged-in'))
+            showToast('Đăng ký thành công!', 'success')
+            navigate('/home', { replace: true })
+        } catch (e: any) {
+            const message = e?.response?.data?.message || e?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+            showToast(message, 'error')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
 	return (
     <div className="min-h-screen bg-[#1a1a2d] text-neutral-100 flex items-start justify-center px-4 pt-6 md:pt-8">
             <div className="relative w-full max-w-lg bg-[#23233a] border border-black/30 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-sm rounded-2xl rgb-pulse fade-in">
@@ -79,7 +107,9 @@ const Login: React.FC = () => {
                         <div className="h-16 w-16 overflow-hidden rounded-lg slide-up">
                             <img src={new URL('../../assets/Image/LogoEduPrompt.png', import.meta.url).href} alt="EduPrompt" className="h-15 w-20 object-contain scale-150 origin-center" />
                         </div>
-                    <h3 className="text-3xl tracking-tight font-semibold slide-up anim-delay-100">Tạo tài khoản</h3>
+                    <h3 className="text-3xl tracking-tight font-semibold slide-up anim-delay-100">
+                        {isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}
+                    </h3>
                     <p className="text-neutral-400 text-center text-sm slide-up anim-delay-200">Nền tảng hỗ trợ tìm kiếm prompt chuẩn AI dành cho giáo viên THPT</p>
                 </div>
                 <div className="p-7 space-y-5">
@@ -107,8 +137,20 @@ const Login: React.FC = () => {
                         <span className="text-xs text-neutral-500">hoặc tiếp tục với email</span>
                         <div className="h-px flex-1 bg-neutral-700/60" />
                     </div>
+                    {isRegister && (
+                        <div className="grid gap-2 slide-up anim-delay-250">
+                            <label className="text-sm text-neutral-300">Họ và tên <span className="text-red-400">*</span></label>
+                            <input
+                                type="text"
+                                placeholder="Nguyễn Văn A"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600"
+                            />
+                        </div>
+                    )}
                     <div className="grid gap-2 slide-up anim-delay-250">
-                        <label className="text-sm text-neutral-300">Địa chỉ email</label>
+                        <label className="text-sm text-neutral-300">Địa chỉ email <span className="text-red-400">*</span></label>
                         <input
                             type="email"
                             placeholder="email@vidu.com"
@@ -118,7 +160,7 @@ const Login: React.FC = () => {
                         />
                     </div>
                     <div className="grid gap-2 slide-up anim-delay-300">
-                        <label className="text-sm text-neutral-300">Mật khẩu</label>
+                        <label className="text-sm text-neutral-300">Mật khẩu <span className="text-red-400">*</span></label>
                         <input
                             type="password"
                             placeholder="••••••••"
@@ -126,26 +168,54 @@ const Login: React.FC = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600"
                         />
+                        {isRegister && (
+                            <p className="text-xs text-neutral-500">Mật khẩu phải có ít nhất 6 ký tự</p>
+                        )}
                     </div>
+                    {isRegister && (
+                        <div className="grid gap-2 slide-up anim-delay-350">
+                            <label className="text-sm text-neutral-300">Số điện thoại (tùy chọn)</label>
+                            <input
+                                type="tel"
+                                placeholder="0123456789"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="bg-neutral-800/90 border border-neutral-700 rounded-xl h-11 px-3 text-neutral-100 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-600"
+                            />
+                        </div>
+                    )}
                 </div>
                 <div className="px-7 pb-7 pt-0 flex flex-col items-stretch gap-4">
                     <button 
-                        onClick={handleEmailPasswordLogin}
+                        onClick={isRegister ? handleRegister : handleEmailPasswordLogin}
                         className="w-full h-11 rounded-xl bg-gradient-to-r from-rose-400 to-orange-400 text-neutral-900 font-semibold hover:opacity-90 slide-up anim-delay-300 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-sm hover:from-rose-500 hover:to-orange-500"
                         disabled={submitting}
                     >
-                        {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                        {submitting ? (isRegister ? 'Đang đăng ký...' : 'Đang đăng nhập...') : (isRegister ? 'Đăng ký' : 'Đăng nhập')}
                     </button>
-                    <div className="flex items-start gap-2 text-xs text-neutral-400 slide-up anim-delay-400">
-                        <input id="updates" type="checkbox" checked={remember} onChange={(e) => setRememberState(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-rose-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-600" />
-                        <label htmlFor="updates" className="leading-relaxed">
-                          Ghi nhớ tài khoản
-                        </label>
-                    </div>
-                    <p className="text-xs text-neutral-500 text-center leading-relaxed slide-up anim-delay-400">
-                    	Bằng việc tạo tài khoản, bạn đồng ý với <a className="underline underline-offset-2" href="#">điều khoản dịch vụ</a>.
-                    	</p>
-                    <button className="text-sm text-neutral-300 hover:text-white underline underline-offset-2 slide-up anim-delay-400">Tôi đã có tài khoản</button>
+                    {!isRegister && (
+                        <div className="flex items-start gap-2 text-xs text-neutral-400 slide-up anim-delay-400">
+                            <input id="updates" type="checkbox" checked={remember} onChange={(e) => setRememberState(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-rose-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-600" />
+                            <label htmlFor="updates" className="leading-relaxed">
+                              Ghi nhớ tài khoản
+                            </label>
+                        </div>
+                    )}
+                    {isRegister && (
+                        <p className="text-xs text-neutral-500 text-center leading-relaxed slide-up anim-delay-400">
+                            Bằng việc tạo tài khoản, bạn đồng ý với <a className="underline underline-offset-2" href="#">điều khoản dịch vụ</a>.
+                        </p>
+                    )}
+                    <button 
+                        onClick={() => {
+                            setIsRegister(!isRegister)
+                            setFullName('')
+                            setPhone('')
+                        }}
+                        className="text-sm text-neutral-300 hover:text-white underline underline-offset-2 slide-up anim-delay-400"
+                    >
+                        {isRegister ? 'Tôi đã có tài khoản' : 'Chưa có tài khoản? Đăng ký'}
+                    </button>
                 </div>
             </div>
 		</div>
