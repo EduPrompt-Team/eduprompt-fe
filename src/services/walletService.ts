@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, getCurrentUser } from '@/lib/api'
 
 export interface Wallet {
   walletId: number
@@ -23,10 +23,20 @@ export interface DeductFundsRequest {
 class WalletService {
   // POST /api/wallets
   async createWallet(): Promise<Wallet> {
-    // Gửi empty object để đảm bảo Content-Type: application/json
-    // Backend sẽ tự lấy userId từ token
-    const { data } = await api.post('/api/wallets', {})
-    return data
+    try {
+      const { data } = await api.post('/api/wallets', {})
+      return data
+    } catch (error: any) {
+      // Nếu backend trả về 400 do ví đã tồn tại, fallback sang lấy ví hiện tại
+      if (error?.response?.status === 400) {
+        const currentUser = getCurrentUser()
+        const userId = Number(currentUser?.userId)
+        if (userId) {
+          return this.getWalletByUserId(userId)
+        }
+      }
+      throw error
+    }
   }
 
   // GET /api/wallets/{WalletId}
@@ -72,8 +82,12 @@ class WalletService {
 
   // GET /api/wallets/my-wallet (recommended - uses current user from token)
   async getMyWallet(): Promise<Wallet> {
-    const { data } = await api.get('/api/wallets/my-wallet')
-    return data
+    const currentUser = getCurrentUser()
+    const userId = Number(currentUser?.userId)
+    if (!userId) {
+      throw new Error('User is not authenticated')
+    }
+    return this.getWalletByUserId(userId)
   }
 
   // GET /api/wallets/user/{UserId} (Admin only or own wallet)

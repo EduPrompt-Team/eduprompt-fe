@@ -3,6 +3,8 @@ import { userService, packageService, aiHistoryService, storageTemplateService }
 import { packageCategoryService } from '@/services/packageCategoryService';
 import { orderService } from '@/services/orderService';
 import { reviewService } from '@/services/reviewService';
+import { paymentService } from '@/services/paymentService';
+import { PaymentStatus } from '@/types/status';
 import type { Package } from '@/services/packageService';
 import type { Order } from '@/services/orderService';
 import type { Review } from '@/services/reviewService';
@@ -57,6 +59,8 @@ const DashboardAdmin: React.FC = () => {
     const [loadingAllTemplates, setLoadingAllTemplates] = useState(false);
     const [templateDeleting, setTemplateDeleting] = useState<number | null>(null);
     const [viewingTemplateId, setViewingTemplateId] = useState<number | null>(null);
+    const [purchasedTemplatesCount, setPurchasedTemplatesCount] = useState<number>(0);
+    const [loadingPurchasedCount, setLoadingPurchasedCount] = useState(false);
 
     // Form state for creating admin template prompt
     const gradeOptions = ['10','11','12'] as const
@@ -308,6 +312,96 @@ const DashboardAdmin: React.FC = () => {
                 setAllTemplates(sortedTemplates);
                 setTotalTemplates(sortedTemplates.length);
                 console.log('[DashboardAdmin] Loaded all templates:', sortedTemplates.length);
+                
+                // Count purchased templates
+                try {
+                    setLoadingPurchasedCount(true);
+                    const allOrders = await orderService.getAllOrders();
+                    const completedOrders = allOrders.filter((order: Order) => 
+                        order.status === 'Completed' || order.status === 'Paid'
+                    );
+                    
+                    // Get all payments with status "Paid"
+                    let paidPayments: any[] = [];
+                    try {
+                        const paymentsResponse = await paymentService.getAll();
+                        const allPayments = Array.isArray(paymentsResponse.data) 
+                            ? paymentsResponse.data 
+                            : (paymentsResponse.data?.data || []);
+                        paidPayments = allPayments.filter((p: any) => 
+                            p.status === PaymentStatus.Paid || p.status === 'Paid'
+                        );
+                    } catch (paymentErr) {
+                        console.warn('[DashboardAdmin] Could not load payments:', paymentErr);
+                    }
+                    
+                    // Collect unique packageIds from orders
+                    const purchasedPackageIds = new Set<number>();
+                    
+                    // From orders
+                    completedOrders.forEach((order: Order) => {
+                        if (order.items && Array.isArray(order.items)) {
+                            order.items.forEach((item: any) => {
+                                const packageId = item.packageID || item.packageId;
+                                if (packageId) {
+                                    purchasedPackageIds.add(packageId);
+                                }
+                            });
+                        }
+                        // Also check order.packageId directly
+                        const orderPackageId = (order as any).packageID || (order as any).packageId;
+                        if (orderPackageId) {
+                            purchasedPackageIds.add(orderPackageId);
+                        }
+                    });
+                    
+                    // From payments (get orderId and then get packageId from order)
+                    for (const payment of paidPayments) {
+                        try {
+                            const orderId = payment.orderID || payment.orderId;
+                            if (orderId) {
+                                const order = await orderService.getOrderById(orderId).catch(() => null);
+                                if (order) {
+                                    if (order.items && Array.isArray(order.items)) {
+                                        order.items.forEach((item: any) => {
+                                            const packageId = item.packageID || item.packageId;
+                                            if (packageId) {
+                                                purchasedPackageIds.add(packageId);
+                                            }
+                                        });
+                                    }
+                                    const orderPackageId = (order as any).packageID || (order as any).packageId;
+                                    if (orderPackageId) {
+                                        purchasedPackageIds.add(orderPackageId);
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.warn('[DashboardAdmin] Could not get order for payment:', err);
+                        }
+                    }
+                    
+                    // Count templates that have been purchased (match by packageId)
+                    const purchasedTemplates = sortedTemplates.filter((template: any) => {
+                        const templatePackageId = template.packageId || template.packageID;
+                        return templatePackageId && purchasedPackageIds.has(templatePackageId);
+                    });
+                    
+                    if (mounted) {
+                        setPurchasedTemplatesCount(purchasedTemplates.length);
+                        console.log('[DashboardAdmin] Purchased templates count:', purchasedTemplates.length);
+                    }
+                } catch (countErr) {
+                    console.error('[DashboardAdmin] Failed to count purchased templates:', countErr);
+                    if (mounted) {
+                        setPurchasedTemplatesCount(0);
+                    }
+                } finally {
+                    if (mounted) {
+                        setLoadingPurchasedCount(false);
+                    }
+                }
+                
                 // Debug: Log first template to check fields
                 if (sortedTemplates.length > 0) {
                     console.log('[DashboardAdmin] Sample template data:', JSON.stringify(sortedTemplates[0], null, 2));
@@ -484,13 +578,26 @@ const DashboardAdmin: React.FC = () => {
 
                 {activeView === 'managePrompt' && (
                     <div className="space-y-6">
+                        {/* Statistics Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <StatCard 
+                                label="Tổng số Templates Prompt" 
+                                value={loadingAllTemplates ? '...' : totalTemplates}
+                            />
+                            <StatCard 
+                                label="Templates đã được mua" 
+                                value={loadingPurchasedCount ? '...' : purchasedTemplatesCount}
+                            />
+                        </div>
+                        
                         <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold">Quản lý Prompt Templates</h2>
+                                <h2 className="text-xl font-semibold">Danh sách Prompt Templates</h2>
                                 <button
                                     onClick={async () => {
                                         try {
                                             setLoadingAllTemplates(true);
+                                            setLoadingPurchasedCount(true);
                                             const [myTemplatesRes, publicTemplatesRes] = await Promise.all([
                                                 storageTemplateService.getMyStorage().catch(() => []),
                                                 storageTemplateService.getPublicTemplates({}).catch(() => []),
@@ -513,11 +620,86 @@ const DashboardAdmin: React.FC = () => {
                                             
                                             setAllTemplates(sortedTemplates);
                                             setTotalTemplates(sortedTemplates.length);
+                                            
+                                            // Recalculate purchased templates count
+                                            try {
+                                                const allOrders = await orderService.getAllOrders();
+                                                const completedOrders = allOrders.filter((order: Order) => 
+                                                    order.status === 'Completed' || order.status === 'Paid'
+                                                );
+                                                
+                                                let paidPayments: any[] = [];
+                                                try {
+                                                    const paymentsResponse = await paymentService.getAll();
+                                                    const allPayments = Array.isArray(paymentsResponse.data) 
+                                                        ? paymentsResponse.data 
+                                                        : (paymentsResponse.data?.data || []);
+                                                    paidPayments = allPayments.filter((p: any) => 
+                                                        p.status === PaymentStatus.Paid || p.status === 'Paid'
+                                                    );
+                                                } catch (paymentErr) {
+                                                    console.warn('[DashboardAdmin] Could not load payments:', paymentErr);
+                                                }
+                                                
+                                                const purchasedPackageIds = new Set<number>();
+                                                
+                                                completedOrders.forEach((order: Order) => {
+                                                    if (order.items && Array.isArray(order.items)) {
+                                                        order.items.forEach((item: any) => {
+                                                            const packageId = item.packageID || item.packageId;
+                                                            if (packageId) {
+                                                                purchasedPackageIds.add(packageId);
+                                                            }
+                                                        });
+                                                    }
+                                                    const orderPackageId = (order as any).packageID || (order as any).packageId;
+                                                    if (orderPackageId) {
+                                                        purchasedPackageIds.add(orderPackageId);
+                                                    }
+                                                });
+                                                
+                                                for (const payment of paidPayments) {
+                                                    try {
+                                                        const orderId = payment.orderID || payment.orderId;
+                                                        if (orderId) {
+                                                            const order = await orderService.getOrderById(orderId).catch(() => null);
+                                                            if (order) {
+                                                                if (order.items && Array.isArray(order.items)) {
+                                                                    order.items.forEach((item: any) => {
+                                                                        const packageId = item.packageID || item.packageId;
+                                                                        if (packageId) {
+                                                                            purchasedPackageIds.add(packageId);
+                                                                        }
+                                                                    });
+                                                                }
+                                                                const orderPackageId = (order as any).packageID || (order as any).packageId;
+                                                                if (orderPackageId) {
+                                                                    purchasedPackageIds.add(orderPackageId);
+                                                                }
+                                                            }
+                                                        }
+                                                    } catch (err) {
+                                                        console.warn('[DashboardAdmin] Could not get order for payment:', err);
+                                                    }
+                                                }
+                                                
+                                                const purchasedTemplates = sortedTemplates.filter((template: any) => {
+                                                    const templatePackageId = template.packageId || template.packageID;
+                                                    return templatePackageId && purchasedPackageIds.has(templatePackageId);
+                                                });
+                                                
+                                                setPurchasedTemplatesCount(purchasedTemplates.length);
+                                            } catch (countErr) {
+                                                console.error('[DashboardAdmin] Failed to count purchased templates:', countErr);
+                                                setPurchasedTemplatesCount(0);
+                                            }
+                                            
                                             showToast('Đã làm mới danh sách templates', 'success');
                                         } catch (e) {
                                             showToast('Không thể làm mới danh sách templates', 'error');
                                         } finally {
                                             setLoadingAllTemplates(false);
+                                            setLoadingPurchasedCount(false);
                                         }
                                     }}
                                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm"
@@ -2282,29 +2464,57 @@ const DashboardAdmin: React.FC = () => {
                                                             {review.comment}
                                                         </p>
 
-                                                        {/* Storage Template Info */}
-                                                        {storageTemplate ? (
-                                                            <div className="text-xs text-neutral-400 mb-2 p-2 bg-[#1a1a2d] rounded border border-[#2a2a44]">
-                                                                <div className="font-semibold text-blue-400 mb-1">Template Prompt:</div>
-                                                                <div className="text-neutral-300">
+                                                        {/* Storage Template Info with Grade, Subject, Chapter */}
+                                                        {storageTemplate ? (() => {
+                                                            // Extract grade, subject, chapter from template fields or templateContent
+                                                            let displayGrade = storageTemplate.grade
+                                                            let displaySubject = storageTemplate.subject
+                                                            let displayChapter = storageTemplate.chapter
+                                                            
+                                                            // Try to parse from templateContent if fields are missing
+                                                            if (!displayGrade || !displaySubject || !displayChapter) {
+                                                                try {
+                                                                    const parsed = JSON.parse(storageTemplate.templateContent || '{}')
+                                                                    displayGrade = displayGrade || parsed.grade
+                                                                    displaySubject = displaySubject || parsed.subject
+                                                                    displayChapter = displayChapter || parsed.chapter
+                                                                } catch (e) {
+                                                                    // Ignore parse errors
+                                                                }
+                                                            }
+                                                            
+                                                            return (
+                                                                <div className="text-xs mb-2 p-3 bg-[#1a1a2d] rounded border border-[#2a2a44]">
+                                                                    <div className="font-semibold text-blue-400 mb-2">Thông tin Prompt Template:</div>
+                                                                    <div className="text-neutral-300 mb-2">
                                                                     <span className="font-medium">{storageTemplate.templateName || 'Chưa có tên'}</span>
                                                                 </div>
-                                                                <div className="mt-1 space-x-2">
-                                                                    {storageTemplate.grade && (
-                                                                        <span className="text-neutral-400">Lớp {storageTemplate.grade}</span>
+                                                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                                                        {displayGrade && (
+                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
+                                                                                <div className="text-neutral-400 text-xs mb-0.5">Khối</div>
+                                                                                <div className="text-white font-semibold text-sm">Lớp {displayGrade}</div>
+                                                                            </div>
                                                                     )}
-                                                                    {storageTemplate.subject && (
-                                                                        <span className="text-neutral-400">• {storageTemplate.subject}</span>
+                                                                        {displaySubject && (
+                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
+                                                                                <div className="text-neutral-400 text-xs mb-0.5">Môn học</div>
+                                                                                <div className="text-white font-semibold text-sm">{displaySubject}</div>
+                                                                            </div>
                                                                     )}
-                                                                    {storageTemplate.chapter && (
-                                                                        <span className="text-neutral-400">• {storageTemplate.chapter}</span>
+                                                                        {displayChapter && (
+                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
+                                                                                <div className="text-neutral-400 text-xs mb-0.5">Chương</div>
+                                                                                <div className="text-white font-semibold text-sm">{displayChapter}</div>
+                                                                            </div>
                                                                     )}
                                                                 </div>
                                                                 {storageTemplate.storageId && (
-                                                                    <div className="text-xs text-neutral-500 mt-1">Storage ID: {storageTemplate.storageId}</div>
+                                                                        <div className="text-xs text-neutral-500 mt-2">Storage ID: {storageTemplate.storageId}</div>
                                                                 )}
                                                             </div>
-                                                        ) : (
+                                                            )
+                                                        })() : (
                                                             <div className="text-xs text-yellow-400 mb-2 p-2 bg-[#1a1a2d] rounded border border-yellow-500/30">
                                                                 ⚠️ Không tìm thấy thông tin template (StorageId: {review.storageId})
                                                             </div>

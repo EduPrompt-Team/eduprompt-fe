@@ -1,4 +1,4 @@
-import { feedbackService, type Feedback, type CreateFeedbackRequest, type UpdateFeedbackRequest } from '@/services/feedbackService'
+import { api } from '@/lib/api'
 
 export interface Review {
   reviewId: number
@@ -6,6 +6,7 @@ export interface Review {
   userId: number
   rating: number
   comment: string
+  packageId?: number | null
   createdAt: string
   updatedAt?: string
   user?: {
@@ -29,143 +30,174 @@ export interface UpdateReviewRequest {
   comment?: string
 }
 
-/**
- * Helper to convert Feedback to Review format
- */
-function feedbackToReview(feedback: Feedback, storageId: number): Review {
-  return {
-    ...feedback,
-    reviewId: feedback.feedbackId,
-    storageId: storageId,
-    userId: feedback.userId,
-    rating: feedback.rating,
-    // Use 'comment' first, fallback to 'content' for backward compatibility
-    comment: feedback.comment || feedback.content || '',
-    createdAt: feedback.createdAt || feedback.createdDate || new Date().toISOString(),
-    updatedAt: feedback.createdAt || feedback.createdDate, // Use createdAt as fallback if no updatedAt
-    user: (feedback as any).user
-  }
-}
-
-/**
- * Helper to convert Review request to Feedback request
- * Backend now supports storageId directly (recommended) or postId (backward compatible)
- */
-function reviewToFeedbackRequest(request: CreateReviewRequest): CreateFeedbackRequest {
-  return {
-    storageId: request.storageId,  // Preferred new field
-    packageId: request.packageId,
-    comment: request.comment,     // Backend expects 'comment'
-    rating: request.rating
-  }
-}
-
 class ReviewService {
-  // POST /api/reviews -> Uses /api/Feedback
-  async createReview(request: CreateReviewRequest): Promise<Review> {
-    const feedbackRequest = reviewToFeedbackRequest(request)
-    const feedback = await feedbackService.createFeedback(feedbackRequest)
-    return feedbackToReview(feedback, request.storageId)
-  }
-
-  // GET /api/reviews/{id} -> Uses /api/Feedback/{id}
-  async getReviewById(id: number): Promise<Review> {
-    const feedback = await feedbackService.getFeedbackById(id)
-    // Note: We need storageId from the request context, but we only have feedbackId
-    // Assuming feedback.postId is the storageId
-    return feedbackToReview(feedback, feedback.postId)
-  }
-
-  // PUT /api/reviews/{id} -> Uses /api/Feedback/{id}
-  async updateReview(id: number, request: UpdateReviewRequest): Promise<Review> {
-    const updateRequest: UpdateFeedbackRequest = {
-      rating: request.rating,
-      content: request.comment
+  private normalizeReview = (review: any): Review => {
+    if (!review) return review
+    return {
+      ...review,
+      packageId: review.packageId ?? review.packageID ?? null,
+      comment: typeof review.comment === 'string' ? review.comment : review.content ?? '',
+      user: review.user
+        ? {
+            userId: review.user.userId ?? review.user.id ?? review.userId,
+            fullName: review.user.fullName ?? review.user.name ?? review.userFullName,
+            email: review.user.email ?? review.userEmail,
+            avatar: review.user.avatar ?? review.userAvatar,
+          }
+        : review.userId
+          ? {
+              userId: review.userId,
+              fullName: review.userFullName,
+              email: review.userEmail,
+            }
+          : undefined,
     }
-    const feedback = await feedbackService.updateFeedback(id, updateRequest)
-    return feedbackToReview(feedback, feedback.postId)
   }
 
-  // DELETE /api/reviews/{id} -> Uses /api/Feedback/{id}
+  // POST /api/reviews - Create a new review
+  async createReview(request: CreateReviewRequest): Promise<Review> {
+    console.log('[ReviewService] Creating review with request:', request)
+    try {
+      const { data } = await api.post('/api/reviews', request)
+      console.log('[ReviewService] Review created successfully:', data)
+      return this.normalizeReview(data)
+    } catch (e: any) {
+      console.error('[ReviewService] Failed to create review:', {
+        error: e,
+        response: e?.response,
+        status: e?.response?.status,
+        data: e?.response?.data,
+        message: e?.response?.data?.message,
+        request
+      })
+      throw e
+    }
+  }
+
+  // GET /api/reviews/{id} - Get review by ID
+  async getReviewById(id: number): Promise<Review> {
+    try {
+      const { data } = await api.get(`/api/reviews/${id}`)
+      return this.normalizeReview(data)
+    } catch (e: any) {
+      if (e?.response?.status === 404) {
+        throw new Error('Review not found')
+      }
+      throw e
+    }
+  }
+
+  // PUT /api/reviews/{id} - Update review
+  async updateReview(id: number, request: UpdateReviewRequest): Promise<Review> {
+    console.log('[ReviewService] Updating review:', id, request)
+    try {
+      const { data } = await api.put(`/api/reviews/${id}`, request)
+      console.log('[ReviewService] Review updated successfully:', data)
+      return this.normalizeReview(data)
+    } catch (e: any) {
+      console.error('[ReviewService] Failed to update review:', {
+        error: e,
+        response: e?.response,
+        status: e?.response?.status,
+        data: e?.response?.data
+      })
+      throw e
+    }
+  }
+
+  // DELETE /api/reviews/{id} - Delete review
   async deleteReview(id: number): Promise<void> {
-    await feedbackService.deleteFeedback(id)
+    console.log('[ReviewService] Deleting review:', id)
+    try {
+      await api.delete(`/api/reviews/${id}`)
+      console.log('[ReviewService] Review deleted successfully')
+    } catch (e: any) {
+      console.error('[ReviewService] Failed to delete review:', {
+        error: e,
+        response: e?.response,
+        status: e?.response?.status,
+        data: e?.response?.data
+      })
+      throw e
+    }
   }
 
-  // GET /api/reviews/storage/{storageId} -> Uses /api/Feedback/post/{postId}
+  // GET /api/reviews/storage/{storageId} - Get all reviews for a storage template
   async getReviewsByStorageId(storageId: number): Promise<Review[]> {
     try {
-      const feedbacks: any = await feedbackService.getFeedbackByStorageId(storageId)
-      // Normalize and map only storage-based results
-      const array:
-        any[] = Array.isArray(feedbacks)
-          ? feedbacks
-          : (typeof feedbacks === 'object' && feedbacks !== null && 'feedbackId' in feedbacks)
-            ? [feedbacks]
-            : (typeof feedbacks === 'object' && feedbacks !== null && Array.isArray((feedbacks as any).items))
-              ? (feedbacks as any).items
-              : (typeof feedbacks === 'object' && feedbacks !== null && Array.isArray((feedbacks as any).data))
-                ? (feedbacks as any).data
-                : []
-
-      // Temporary safety net: if BE list unexpectedly empty, try legacy /post/{id}
-      if (!Array.isArray(array) || array.length === 0) {
-        try {
-          const legacy: any = await feedbackService.getFeedbackByPostId(storageId)
-          const legacyArr: any[] = Array.isArray(legacy)
-            ? legacy
-            : (legacy && typeof legacy === 'object' && 'feedbackId' in legacy) ? [legacy]
-            : (legacy && typeof legacy === 'object' && Array.isArray(legacy.items)) ? legacy.items
-            : (legacy && typeof legacy === 'object' && Array.isArray(legacy.data)) ? legacy.data
-            : []
-          if (legacyArr.length > 0) {
-            return legacyArr.map((fb: any) => feedbackToReview(fb, storageId))
-          }
-        } catch {
-          // ignore
-        }
+      const { data } = await api.get(`/api/reviews/storage/${storageId}`)
+      // Normalize response - backend may return array directly or wrapped
+      if (Array.isArray(data)) {
+        return data.map(this.normalizeReview)
       }
-
-      return array.map(fb => feedbackToReview(fb, storageId))
+      if (data && typeof data === 'object') {
+        if (Array.isArray(data.items)) return data.items.map(this.normalizeReview)
+        if (Array.isArray(data.data)) return data.data.map(this.normalizeReview)
+        if ('reviewId' in data) return [this.normalizeReview(data as Review)]
+      }
+      return []
     } catch (e: any) {
       // Return empty array on 404 (no reviews yet)
       if (e?.response?.status === 404) {
+        console.log('[ReviewService] No reviews found for storageId:', storageId)
         return []
       }
+      console.error('[ReviewService] Failed to get reviews by storageId:', e)
       throw e
     }
   }
 
-  // GET /api/reviews/storage/{storageId}/rating -> Uses /api/Feedback/post/{postId}/rating
+  // GET /api/reviews/storage/{storageId}/rating - Get average rating
   async getAverageRating(storageId: number): Promise<number> {
     try {
-      return await feedbackService.getAverageRatingByStorageId(storageId)
+      const { data } = await api.get(`/api/reviews/storage/${storageId}/rating`)
+      // Backend may return {rating: 4.5} or just 4.5
+      if (typeof data === 'object' && data !== null && 'rating' in data) {
+        return Number(data.rating) || 0
+      }
+      return Number(data) || 0
     } catch (e: any) {
       // Return 0 on 404 (no reviews yet)
       if (e?.response?.status === 404) {
         return 0
       }
-      throw e
+      console.warn('[ReviewService] Failed to get average rating:', e)
+      return 0
     }
   }
 
-  // GET /api/reviews/storage/{storageId}/count -> Uses /api/Feedback/post/{postId}/count
+  // GET /api/reviews/storage/{storageId}/count - Get review count
   async getReviewCount(storageId: number): Promise<number> {
     try {
-      return await feedbackService.getFeedbackCountByStorageId(storageId)
+      const { data } = await api.get(`/api/reviews/storage/${storageId}/count`)
+      // Backend may return {count: 5} or just 5
+      if (typeof data === 'object' && data !== null && 'count' in data) {
+        return Number(data.count) || 0
+      }
+      return Number(data) || 0
     } catch (e: any) {
       // Return 0 on 404 (no reviews yet)
       if (e?.response?.status === 404) {
         return 0
       }
-      throw e
+      console.warn('[ReviewService] Failed to get review count:', e)
+      return 0
     }
   }
 
-  // GET /api/reviews/user/{userId} -> Uses /api/Feedback/user/{userId}
+  // GET /api/reviews/user/{userId} - Get all reviews by user
   async getReviewsByUserId(userId: number): Promise<Review[]> {
     try {
-      const feedbacks = await feedbackService.getFeedbackByUserId(userId)
-      return feedbacks.map(fb => feedbackToReview(fb, fb.postId))
+      const { data } = await api.get(`/api/reviews/user/${userId}`)
+      if (Array.isArray(data)) {
+        return data.map(this.normalizeReview)
+      }
+      if (typeof data === 'object' && data !== null) {
+        if (Array.isArray(data.items)) return data.items.map(this.normalizeReview)
+        if (Array.isArray(data.data)) return data.data.map(this.normalizeReview)
+        if ('reviewId' in data) return [this.normalizeReview(data as Review)]
+      }
+      return []
     } catch (e: any) {
       if (e?.response?.status === 404) {
         return []
@@ -174,69 +206,48 @@ class ReviewService {
     }
   }
 
-  // GET /api/reviews/user/{userId}/storage/{storageId}
-  // This needs to be implemented differently - get all user feedbacks and filter by postId
+  // GET /api/reviews/user/{userId}/storage/{storageId} - Get user's review for a specific storage
   async getUserReviewForStorage(userId: number, storageId: number): Promise<Review | null> {
-    // Avoid extra endpoint: load by storageId then filter by user
-    const reviews = await this.getReviewsByStorageId(storageId)
-    const match = reviews.find(r => r.userId === userId) || null
-    return match
+    try {
+      const { data } = await api.get(`/api/reviews/user/${userId}/storage/${storageId}`)
+      // Backend returns the review or null/404 if not found
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        return null
+      }
+      return this.normalizeReview(data)
+    } catch (e: any) {
+      // Return null on 404 (user hasn't reviewed yet)
+      if (e?.response?.status === 404) {
+        return null
+      }
+      console.warn('[ReviewService] Failed to get user review for storage:', e)
+      return null
+    }
   }
 
   // GET /api/reviews (admin only - all reviews)
-  // Since Feedback API doesn't have getAllFeedbacks endpoint,
-  // we fetch all storage templates and get reviews for each
   async getAllReviews(): Promise<Review[]> {
     try {
-      // Import storageTemplateService dynamically to avoid circular dependency
-      const { storageTemplateService } = await import('@/services/storageTemplateService')
-      
-      // Fetch all public templates to get all storageIds
-      const allTemplates = await storageTemplateService.getPublicTemplates({}).catch(() => [])
-      const templatesArray = Array.isArray(allTemplates) ? allTemplates : []
-      
-      // Fetch all reviews for all storage templates
-      const reviewPromises = templatesArray.map((template: any) => {
-        const storageId = template.storageId || template.id
-        if (!storageId) return Promise.resolve([])
-        return this.getReviewsByStorageId(storageId).catch(() => [])
-      })
-      
-      const allReviewsArrays = await Promise.all(reviewPromises)
-      // Flatten array of arrays into single array
-      const allReviews = allReviewsArrays.flat()
-      
-      // Also fetch from my-storage templates
-      try {
-        const myTemplates = await storageTemplateService.getMyStorage().catch(() => [])
-        const myTemplatesArray = Array.isArray(myTemplates) ? myTemplates : []
-        const myReviewPromises = myTemplatesArray.map((template: any) => {
-          const storageId = template.storageId || template.id
-          if (!storageId) return Promise.resolve([])
-          return this.getReviewsByStorageId(storageId).catch(() => [])
-        })
-        const myReviewsArrays = await Promise.all(myReviewPromises)
-        const myReviews = myReviewsArrays.flat()
-        allReviews.push(...myReviews)
-      } catch (e) {
-        console.warn('[ReviewService] Failed to load reviews from my-storage:', e)
+      const { data } = await api.get('/api/reviews')
+      if (Array.isArray(data)) {
+        return data.map(this.normalizeReview)
       }
-      
-      // Remove duplicates by reviewId
-      const uniqueReviews = allReviews.reduce((acc, review) => {
-        if (!acc.find((r: Review) => r.reviewId === review.reviewId)) {
-          acc.push(review)
-        }
-        return acc
-      }, [] as Review[])
-      
-      return uniqueReviews
+      if (typeof data === 'object' && data !== null) {
+        if (Array.isArray(data.items)) return data.items.map(this.normalizeReview)
+        if (Array.isArray(data.data)) return data.data.map(this.normalizeReview)
+      }
+      return []
     } catch (e: any) {
       console.error('[ReviewService] Failed to getAllReviews:', e)
-      return []
+      // Return empty array on error (admin might not have permission)
+      if (e?.response?.status === 404 || e?.response?.status === 403) {
+        return []
+      }
+      throw e
     }
   }
 }
 
 export const reviewService = new ReviewService()
+
 

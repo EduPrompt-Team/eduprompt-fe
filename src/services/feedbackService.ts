@@ -23,6 +23,7 @@ export interface CreateFeedbackRequest {
 
 export interface UpdateFeedbackRequest {
   content?: string
+  comment?: string  // Backend expects 'comment'
   rating?: number
 }
 
