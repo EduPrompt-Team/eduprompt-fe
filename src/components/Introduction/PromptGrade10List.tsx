@@ -10,7 +10,7 @@ const PromptGrade10List: React.FC = () => {
   // In case grade12 route exists; safe no-op if not configured
   const handleGrade12 = () => navigate('/grade12')
   const handleMath10 = () => navigate('/grade10/math')
-  
+
   // Subject key mapping for navigation
   const subjectKeyMap: Record<string, string> = {
     'Toán': 'math',
