@@ -849,12 +849,12 @@ const PromptGrade10MathDetail: React.FC = () => {
                                         <Trash2 className="w-4 h-4" />
                                         <span>Xóa</span>
                                       </button>
-                  </div>
+                                    </div>
                                   </>
                                 )}
-                      </div>
+                              </div>
                             )}
-                    </div>
+                          </div>
                         )}
                     </div>
                   </div>
