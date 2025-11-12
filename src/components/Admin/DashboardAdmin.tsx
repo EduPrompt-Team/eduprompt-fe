@@ -1,15 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { userService, packageService, aiHistoryService, storageTemplateService } from '@/services';
 import { packageCategoryService } from '@/services/packageCategoryService';
 import { orderService } from '@/services/orderService';
 import { reviewService } from '@/services/reviewService';
+import { walletService } from '@/services/walletService';
+import { transactionService } from '@/services/transactionService';
+import { paymentService } from '@/services/paymentService';
+import { postService } from '@/services/postService';
+import { promptInstanceService } from '@/services/promptInstanceService';
+import { templateArchitectureService } from '@/services/templateArchitectureService';
+import { roleService } from '@/services/roleService';
+import { paymentMethodService } from '@/services/paymentMethodService';
+import { apiKeyService } from '@/services/apiKeyService';
 import type { Package } from '@/services/packageService';
 import type { Order } from '@/services/orderService';
 import type { Review } from '@/services/reviewService';
+import type { Wallet } from '@/services/walletService';
+import type { Transaction } from '@/services/transactionService';
+import type { User } from '@/services/userService';
+import type { Post } from '@/services/postService';
+import type { AIHistory } from '@/services/AIHistoryService';
 import { useToast } from '@/components/ui/toast';
-import { Trash2, Star } from 'lucide-react';
+import { 
+    Trash2, Star, Wallet as WalletIcon, Plus, Minus, Eye, EyeOff, 
+    LayoutDashboard, Users, Package as PackageIcon, FileText, ShoppingCart, CreditCard, 
+    TrendingUp, MessageSquare, Settings, Key, Shield, Archive, Sparkles,
+    BarChart3, Search, Filter, Download, Edit, MoreVertical
+} from 'lucide-react';
 
-type ViewKey = 'manage' | 'managePrompt' | 'createPrompt' | 'createPackage' | 'createCategory' | 'managePackages' | 'manageReviews';
+type ViewKey = 
+    // Dashboard
+    | 'dashboard' 
+    // Users
+    | 'users' | 'createUser'
+    // Content
+    | 'packages' | 'createPackage' | 'packageCategories' | 'createCategory'
+    | 'templates' | 'promptInstances' | 'templateArchitectures' | 'createTemplateArchitecture'
+    | 'posts' | 'createPost'
+    // Orders & Payments
+    | 'orders' | 'transactions' | 'payments' | 'wallets'
+    // AI & Analytics
+    | 'aiHistories' | 'aiStats'
+    // Reviews
+    | 'reviews'
+    // System
+    | 'apiKeys' | 'roles' | 'paymentMethods'
+    // Legacy (keep for backward compatibility)
+    | 'manage' | 'managePrompt' | 'createPrompt' | 'managePackages' | 'manageReviews' | 'manageWallets';
 
 const SidebarButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
@@ -31,14 +68,20 @@ const StatCard: React.FC<{ label: string; value: number | string }> = ({ label, 
 
 const DashboardAdmin: React.FC = () => {
     const { showToast } = useToast();
-    const [activeView, setActiveView] = useState<ViewKey>('manage');
+    const [activeView, setActiveView] = useState<ViewKey>('dashboard');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+    // Dashboard Stats
     const [totalUsers, setTotalUsers] = useState<number>(0);
     const [totalPackages, setTotalPackages] = useState<number>(0);
     const [totalAIHistory, setTotalAIHistory] = useState<number>(0);
     const [totalTemplates, setTotalTemplates] = useState<number>(0);
+    const [totalOrders, setTotalOrders] = useState<number>(0);
+    const [totalTransactions, setTotalTransactions] = useState<number>(0);
+    const [totalPayments, setTotalPayments] = useState<number>(0);
+    const [totalRevenue, setTotalRevenue] = useState<number>(0);
     const [packages, setPackages] = useState<Package[]>([]);
     const [categories, setCategories] = useState<{ categoryId: number; categoryName: string }[]>([]);
     // Track các categories được tạo thủ công qua form "Tạo Phân Loại"
@@ -57,6 +100,94 @@ const DashboardAdmin: React.FC = () => {
     const [loadingAllTemplates, setLoadingAllTemplates] = useState(false);
     const [templateDeleting, setTemplateDeleting] = useState<number | null>(null);
     const [viewingTemplateId, setViewingTemplateId] = useState<number | null>(null);
+    
+    // State for wallet management
+    const [userWallets, setUserWallets] = useState<Map<number, Wallet>>(new Map());
+    const [userTransactions, setUserTransactions] = useState<Map<number, Transaction[]>>(new Map());
+    const [loadingWallets, setLoadingWallets] = useState(false);
+    const [expandedWallets, setExpandedWallets] = useState<Set<number>>(new Set());
+    const [fundsForm, setFundsForm] = useState<{ userId: number; amount: string; type: 'add' | 'deduct' } | null>(null);
+    
+    // State for new management pages
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [allOrders, setAllOrders] = useState<Order[]>([]);
+    const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+    const [allPayments, setAllPayments] = useState<any[]>([]);
+    const [allPosts, setAllPosts] = useState<Post[]>([]);
+    const [allAIHistories, setAllAIHistories] = useState<AIHistory[]>([]);
+    const [allPromptInstances, setAllPromptInstances] = useState<any[]>([]);
+    const [allTemplateArchitectures, setAllTemplateArchitectures] = useState<any[]>([]);
+    const [allRoles, setAllRoles] = useState<any[]>([]);
+    const [allPaymentMethods, setAllPaymentMethods] = useState<any[]>([]);
+    const [allApiKeys, setAllApiKeys] = useState<any[]>([]);
+    
+    // Loading states
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const [loadingPayments, setLoadingPayments] = useState(false);
+    const [loadingPosts, setLoadingPosts] = useState(false);
+    const [loadingAIHistories, setLoadingAIHistories] = useState(false);
+    const [loadingTemplateArchitectures, setLoadingTemplateArchitectures] = useState(false);
+    const [loadingRoles, setLoadingRoles] = useState(false);
+    const [loadingApiKeys, setLoadingApiKeys] = useState(false);
+    const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+    
+    // Search & Filter states
+    const [userSearchTerm, setUserSearchTerm] = useState<string>('');
+    const [orderSearchTerm, setOrderSearchTerm] = useState<string>('');
+    const [transactionSearchTerm, setTransactionSearchTerm] = useState<string>('');
+    const [paymentSearchTerm, setPaymentSearchTerm] = useState<string>('');
+    const [postSearchTerm, setPostSearchTerm] = useState<string>('');
+    const [aiSearchTerm, setAiSearchTerm] = useState<string>('');
+    const [architectureSearchTerm, setArchitectureSearchTerm] = useState<string>('');
+    const [roleSearchTerm, setRoleSearchTerm] = useState<string>('');
+    const [apiKeySearchTerm, setApiKeySearchTerm] = useState<string>('');
+    const [paymentMethodSearchTerm, setPaymentMethodSearchTerm] = useState<string>('');
+
+    const pageSizeOptions = [5, 10, 20, 50] as const;
+
+    const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
+    const [userPage, setUserPage] = useState(1);
+    const [userPageSize, setUserPageSize] = useState<number>(10);
+
+    const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
+    const [orderPage, setOrderPage] = useState(1);
+    const [orderPageSize, setOrderPageSize] = useState<number>(10);
+
+    const [transactionTypeFilter, setTransactionTypeFilter] = useState<string>('all');
+    const [transactionStatusFilter, setTransactionStatusFilter] = useState<string>('all');
+    const [transactionPage, setTransactionPage] = useState(1);
+    const [transactionPageSize, setTransactionPageSize] = useState<number>(10);
+
+    const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
+    const [paymentPage, setPaymentPage] = useState(1);
+    const [paymentPageSize, setPaymentPageSize] = useState<number>(10);
+
+    const [postStatusFilter, setPostStatusFilter] = useState<string>('all');
+    const [postTypeFilter, setPostTypeFilter] = useState<string>('all');
+    const [postPage, setPostPage] = useState(1);
+    const [postPageSize, setPostPageSize] = useState<number>(10);
+
+    const [aiPage, setAiPage] = useState(1);
+    const [aiPageSize, setAiPageSize] = useState<number>(10);
+
+    const [architectureTypeFilter, setArchitectureTypeFilter] = useState<string>('all');
+    const [architecturePage, setArchitecturePage] = useState(1);
+    const [architecturePageSize, setArchitecturePageSize] = useState<number>(10);
+
+    const [rolePage, setRolePage] = useState(1);
+    const [rolePageSize, setRolePageSize] = useState<number>(10);
+
+    const [apiKeyPackageId, setApiKeyPackageId] = useState<string>('');
+    const [apiKeyProviderFilter, setApiKeyProviderFilter] = useState<string>('');
+    const [apiKeyPage, setApiKeyPage] = useState(1);
+    const [apiKeyPageSize, setApiKeyPageSize] = useState<number>(10);
+
+    const [paymentMethodProviderFilter, setPaymentMethodProviderFilter] = useState<string>('all');
+    const [paymentMethodStatusFilter, setPaymentMethodStatusFilter] = useState<string>('all');
+    const [paymentMethodPage, setPaymentMethodPage] = useState(1);
+    const [paymentMethodPageSize, setPaymentMethodPageSize] = useState<number>(10);
 
     // Form state for creating admin template prompt
     const gradeOptions = ['10','11','12'] as const
@@ -217,6 +348,50 @@ const DashboardAdmin: React.FC = () => {
         }
     }, [])
 
+    // Load wallets when manageWallets view is active
+    useEffect(() => {
+        if (activeView !== 'manageWallets') return;
+        
+        let mounted = true;
+        (async () => {
+            try {
+                setLoadingWallets(true);
+                const usersList = await userService.getAllUsers().catch(() => []);
+                if (!mounted) return;
+                
+                const walletsMap = new Map<number, Wallet>();
+                const transactionsMap = new Map<number, Transaction[]>();
+                
+                // Load wallet and transactions for each user
+                for (const user of usersList) {
+                    try {
+                        const wallet = await walletService.getWalletByUserId(user.userId).catch(() => null);
+                        if (wallet) {
+                            walletsMap.set(user.userId, wallet);
+                            
+                            // Load transactions for this user
+                            const transactions = await transactionService.getTransactionsByUserId(user.userId).catch(() => []);
+                            transactionsMap.set(user.userId, transactions);
+                        }
+                    } catch (e) {
+                        console.error(`Failed to load wallet for user ${user.userId}:`, e);
+                    }
+                }
+                
+                if (!mounted) return;
+                setUserWallets(walletsMap);
+                setUserTransactions(transactionsMap);
+            } catch (e) {
+                console.error('Failed to load wallets:', e);
+                showToast('Không thể tải danh sách ví tiền', 'error');
+            } finally {
+                if (mounted) setLoadingWallets(false);
+            }
+        })();
+        
+        return () => { mounted = false; };
+    }, [activeView]);
+    
     // Load reviews when manageReviews view is active
     useEffect(() => {
         if (activeView !== 'manageReviews') return;
@@ -381,6 +556,152 @@ const DashboardAdmin: React.FC = () => {
         };
     }, []);
 
+    // Load data when switching views
+    useEffect(() => {
+        if (activeView === 'users' && allUsers.length === 0) {
+            (async () => {
+                try {
+                    setLoadingUsers(true);
+                    const users = await userService.getAllUsers();
+                    setAllUsers(users);
+                } catch (e) {
+                    console.error('Failed to load users:', e);
+                } finally {
+                    setLoadingUsers(false);
+                }
+            })();
+        }
+    }, [activeView]);
+
+    useEffect(() => {
+        if (activeView === 'orders' && allOrders.length === 0) {
+            (async () => {
+                try {
+                    setLoadingOrders(true);
+                    const orders = await orderService.getAllOrders();
+                    setAllOrders(orders);
+                } catch (e) {
+                    console.error('Failed to load orders:', e);
+                } finally {
+                    setLoadingOrders(false);
+                }
+            })();
+        }
+    }, [activeView]);
+
+    useEffect(() => {
+        if (activeView === 'transactions' && allTransactions.length === 0) {
+            (async () => {
+                try {
+                    setLoadingTransactions(true);
+                    const transactions = await transactionService.getAllTransactions();
+                    setAllTransactions(transactions);
+                } catch (e) {
+                    console.error('Failed to load transactions:', e);
+                } finally {
+                    setLoadingTransactions(false);
+                }
+            })();
+        }
+    }, [activeView]);
+
+    useEffect(() => {
+        if (activeView === 'payments' && allPayments.length === 0) {
+            (async () => {
+                try {
+                    setLoadingPayments(true);
+                    const response = await paymentService.getAll();
+                    const payments = Array.isArray(response.data) ? response.data : response;
+                    setAllPayments(payments);
+                } catch (e) {
+                    console.error('Failed to load payments:', e);
+                } finally {
+                    setLoadingPayments(false);
+                }
+            })();
+        }
+    }, [activeView]);
+
+    useEffect(() => {
+        if (activeView === 'posts' && allPosts.length === 0) {
+            (async () => {
+                try {
+                    setLoadingPosts(true);
+                    const posts = await postService.getAllPosts();
+                    setAllPosts(posts);
+                } catch (e) {
+                    console.error('Failed to load posts:', e);
+                } finally {
+                    setLoadingPosts(false);
+                }
+            })();
+        }
+    }, [activeView, allPosts.length]);
+
+    useEffect(() => {
+        if (activeView === 'aiHistories' && allAIHistories.length === 0) {
+            (async () => {
+                try {
+                    setLoadingAIHistories(true);
+                    const histories = await aiHistoryService.getAllHistory();
+                    setAllAIHistories(histories);
+                } catch (e) {
+                    console.error('Failed to load AI histories:', e);
+                } finally {
+                    setLoadingAIHistories(false);
+                }
+            })();
+        }
+    }, [activeView, allAIHistories.length]);
+
+    useEffect(() => {
+        if (activeView === 'templateArchitectures' && allTemplateArchitectures.length === 0) {
+            (async () => {
+                try {
+                    setLoadingTemplateArchitectures(true);
+                    const architectures = await templateArchitectureService.getAll();
+                    setAllTemplateArchitectures(architectures);
+                } catch (e) {
+                    console.error('Failed to load template architectures:', e);
+                } finally {
+                    setLoadingTemplateArchitectures(false);
+                }
+            })();
+        }
+    }, [activeView, allTemplateArchitectures.length]);
+
+    useEffect(() => {
+        if (activeView === 'roles' && allRoles.length === 0) {
+            (async () => {
+                try {
+                    setLoadingRoles(true);
+                    const roles = await roleService.getAllRoles();
+                    setAllRoles(roles);
+                } catch (e) {
+                    console.error('Failed to load roles:', e);
+                } finally {
+                    setLoadingRoles(false);
+                }
+            })();
+        }
+    }, [activeView, allRoles.length]);
+
+    useEffect(() => {
+        if (activeView === 'paymentMethods' && allPaymentMethods.length === 0) {
+            (async () => {
+                try {
+                    setLoadingPaymentMethods(true);
+                    const methods = await paymentMethodService.getAllPaymentMethods();
+                    setAllPaymentMethods(methods);
+                } catch (e) {
+                    console.error('Failed to load payment methods:', e);
+                } finally {
+                    setLoadingPaymentMethods(false);
+                }
+            })();
+        }
+    }, [activeView, allPaymentMethods.length]);
+
     // 1. Tier options
     // Sync chọn tier sẽ tự fill tên, code
     // Removed useEffect for syncing tier selection to form
@@ -437,41 +758,865 @@ const DashboardAdmin: React.FC = () => {
         return uniqueCategories.sort((a, b) => a.label.localeCompare(b.label))
     })()
 
+    const slicePage = <T,>(items: T[], page: number, pageSize: number) => {
+        const safePage = Math.max(page, 1);
+        const start = (safePage - 1) * pageSize;
+        return items.slice(start, start + pageSize);
+    };
+
+    const exportToCsv = (filename: string, rows: any[]) => {
+        if (!rows || rows.length === 0) {
+            showToast('Không có dữ liệu để xuất', 'info');
+            return;
+        }
+
+        const headerSet = rows.reduce((set: Set<string>, row: Record<string, any>) => {
+            Object.keys(row || {}).forEach((key) => set.add(key));
+            return set;
+        }, new Set<string>());
+
+        const headers = Array.from(headerSet);
+
+        const safeValue = (value: any) => {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'object') {
+                try {
+                    return JSON.stringify(value).replace(/"/g, '""');
+                } catch {
+                    return String(value).replace(/"/g, '""');
+                }
+            }
+            return String(value).replace(/"/g, '""');
+        };
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map((row: Record<string, any>) =>
+                headers
+                    .map((header) => `"${safeValue(row?.[header])}"`)
+                    .join(',')
+            )
+        ].join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${filename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast(`Đã xuất ${rows.length} dòng dữ liệu`, 'success');
+    };
+
+    const renderPagination = (
+        currentPage: number,
+        totalItems: number,
+        pageSize: number,
+        onPageChange: (page: number) => void,
+        onPageSizeChange: (size: number) => void
+    ) => {
+        const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        const canPrev = currentPage > 1;
+        const canNext = currentPage < totalPages;
+
+        return (
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                    <span className="text-neutral-400">Hiển thị</span>
+                    <select
+                        value={pageSize}
+                        onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                        className="bg-[#1a1a2d] border border-[#2a2a44] rounded-lg px-3 py-1 text-white focus:outline-none focus:border-blue-500"
+                    >
+                        {pageSizeOptions.map((size) => (
+                            <option key={size} value={size}>
+                                {size}
+                            </option>
+                        ))}
+                    </select>
+                    <span className="text-neutral-400">dòng</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                        disabled={!canPrev}
+                        className="px-3 py-1 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:bg-[#1f1f33] disabled:opacity-40"
+                    >
+                        Trước
+                    </button>
+                    <span className="text-neutral-400">
+                        Trang {currentPage} / {totalPages}
+                    </span>
+                    <button
+                        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                        disabled={!canNext}
+                        className="px-3 py-1 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:bg-[#1f1f33] disabled:opacity-40"
+                    >
+                        Sau
+                    </button>
+                </div>
+                <div className="text-neutral-500">Tổng {totalItems} dòng</div>
+            </div>
+        );
+    };
+
+    const orderStatusOptions = useMemo(() => {
+        const set = new Set<string>();
+        allOrders.forEach((order) => {
+            if (order?.status) {
+                set.add(order.status);
+            }
+        });
+        return Array.from(set);
+    }, [allOrders]);
+
+    const transactionTypeOptions = useMemo(() => {
+        const set = new Set<string>();
+        allTransactions.forEach((tx) => {
+            if (tx?.transactionType) {
+                set.add(tx.transactionType);
+            }
+        });
+        return Array.from(set);
+    }, [allTransactions]);
+
+    const transactionStatusOptions = useMemo(() => {
+        const set = new Set<string>();
+        allTransactions.forEach((tx) => {
+            if (tx?.status) {
+                set.add(tx.status);
+            }
+        });
+        return Array.from(set);
+    }, [allTransactions]);
+
+    const paymentStatusOptions = useMemo(() => {
+        const set = new Set<string>();
+        allPayments.forEach((payment: any) => {
+            if (payment?.status) {
+                set.add(payment.status);
+            }
+        });
+        return Array.from(set);
+    }, [allPayments]);
+
+    const postStatusOptions = useMemo(() => {
+        const set = new Set<string>();
+        allPosts.forEach((post) => {
+            if (post?.status) {
+                set.add(post.status);
+            }
+        });
+        return Array.from(set);
+    }, [allPosts]);
+
+    const postTypeOptions = useMemo(() => {
+        const set = new Set<string>();
+        allPosts.forEach((post) => {
+            if (post?.postType) {
+                set.add(post.postType);
+            }
+        });
+        return Array.from(set);
+    }, [allPosts]);
+
+    const architectureTypeOptions = useMemo(() => {
+        const set = new Set<string>();
+        allTemplateArchitectures.forEach((arch) => {
+            if (arch?.architectureType) {
+                set.add(arch.architectureType);
+            }
+        });
+        return Array.from(set);
+    }, [allTemplateArchitectures]);
+
+    const paymentMethodProviderOptions = useMemo(() => {
+        const set = new Set<string>();
+        allPaymentMethods.forEach((method: any) => {
+            if (method?.provider) {
+                set.add(method.provider);
+            }
+        });
+        return Array.from(set);
+    }, [allPaymentMethods]);
+
+    const apiKeyProviderOptions = useMemo(() => {
+        const set = new Set<string>();
+        allApiKeys.forEach((apiKey: any) => {
+            if (apiKey?.provider) {
+                set.add(apiKey.provider);
+            }
+        });
+        return Array.from(set);
+    }, [allApiKeys]);
+
+    const ordersChartData = useMemo(() => {
+        const map = new Map<string, number>();
+        allOrders.forEach((order) => {
+            const label = order?.status || 'Khác';
+            map.set(label, (map.get(label) || 0) + 1);
+        });
+        const data = Array.from(map.entries()).map(([label, count]) => ({ label, count }));
+        const max = data.reduce((acc, item) => Math.max(acc, item.count), 0);
+        return { data, max };
+    }, [allOrders]);
+
+    const transactionsChartData = useMemo(() => {
+        const map = new Map<string, number>();
+        allTransactions.forEach((tx) => {
+            const label = tx?.transactionType || 'Khác';
+            map.set(label, (map.get(label) || 0) + 1);
+        });
+        const data = Array.from(map.entries()).map(([label, count]) => ({ label, count }));
+        const max = data.reduce((acc, item) => Math.max(acc, item.count), 0);
+        return { data, max };
+    }, [allTransactions]);
+
+    const paymentsChartData = useMemo(() => {
+        const map = new Map<string, number>();
+        allPayments.forEach((payment: any) => {
+            const label = payment?.status || 'Khác';
+            map.set(label, (map.get(label) || 0) + 1);
+        });
+        const data = Array.from(map.entries()).map(([label, count]) => ({ label, count }));
+        const max = data.reduce((acc, item) => Math.max(acc, item.count), 0);
+        return { data, max };
+    }, [allPayments]);
+
+    const filteredUsers = useMemo(() => {
+        return allUsers.filter((user) => {
+            const matchSearch = !userSearchTerm
+                || user.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
+                || user.fullName?.toLowerCase().includes(userSearchTerm.toLowerCase());
+            const matchRole = userRoleFilter === 'all'
+                || (userRoleFilter === 'admin' && user.roleId === 1)
+                || (userRoleFilter === 'user' && user.roleId !== 1);
+            return matchSearch && matchRole;
+        });
+    }, [allUsers, userSearchTerm, userRoleFilter]);
+
+    const filteredOrders = useMemo(() => {
+        const keyword = orderSearchTerm.trim().toLowerCase();
+        return allOrders.filter((order) => {
+            const matchStatus = !orderStatusFilter || orderStatusFilter === 'all'
+                ? true
+                : (order.status || '').toLowerCase() === orderStatusFilter.toLowerCase();
+            const matchSearch = !keyword
+                || order.orderNumber?.toLowerCase().includes(keyword)
+                || order.orderId?.toString() === orderSearchTerm
+                || order.userId?.toString() === orderSearchTerm;
+            return matchStatus && matchSearch;
+        });
+    }, [allOrders, orderSearchTerm, orderStatusFilter]);
+
+    const filteredTransactions = useMemo(() => {
+        const keyword = transactionSearchTerm.trim().toLowerCase();
+        return allTransactions.filter((tx) => {
+            const matchType = transactionTypeFilter === 'all' || tx.transactionType === transactionTypeFilter;
+            const matchStatus = transactionStatusFilter === 'all' || tx.status === transactionStatusFilter;
+            const matchSearch = !keyword
+                || tx.transactionId?.toString() === transactionSearchTerm
+                || tx.transactionReference?.toLowerCase().includes(keyword)
+                || tx.walletId?.toString() === transactionSearchTerm;
+            return matchType && matchStatus && matchSearch;
+        });
+    }, [allTransactions, transactionSearchTerm, transactionStatusFilter, transactionTypeFilter]);
+
+    const filteredPayments = useMemo(() => {
+        const keyword = paymentSearchTerm.trim().toLowerCase();
+        return allPayments.filter((payment: any) => {
+            const matchStatus = paymentStatusFilter === 'all' || payment.status === paymentStatusFilter;
+            const matchSearch = !keyword
+                || payment.paymentId?.toString() === paymentSearchTerm
+                || payment.orderId?.toString() === paymentSearchTerm
+                || payment.provider?.toLowerCase().includes(keyword);
+            return matchStatus && matchSearch;
+        });
+    }, [allPayments, paymentSearchTerm, paymentStatusFilter]);
+
+    const filteredPosts = useMemo(() => {
+        return allPosts.filter((post) => {
+            const matchSearch = !postSearchTerm
+                || post.title?.toLowerCase().includes(postSearchTerm.toLowerCase())
+                || post.postId?.toString() === postSearchTerm;
+            const matchStatus = postStatusFilter === 'all' || post.status === postStatusFilter;
+            const matchType = postTypeFilter === 'all' || post.postType === postTypeFilter;
+            return matchSearch && matchStatus && matchType;
+        });
+    }, [allPosts, postSearchTerm, postStatusFilter, postTypeFilter]);
+
+    const filteredAIHistories = useMemo(() => {
+        return allAIHistories.filter((history) => {
+            if (!aiSearchTerm) return true;
+            const keyword = aiSearchTerm.toLowerCase();
+            return (
+                history.historyId?.toString() === aiSearchTerm
+                || history.userId?.toString() === aiSearchTerm
+                || history.promptText?.toLowerCase().includes(keyword)
+                || history.responseText?.toLowerCase().includes(keyword)
+            );
+        });
+    }, [allAIHistories, aiSearchTerm]);
+
+    const filteredArchitectures = useMemo(() => {
+        return allTemplateArchitectures.filter((arch: any) => {
+            const matchSearch = !architectureSearchTerm
+                || arch.architectureName?.toLowerCase().includes(architectureSearchTerm.toLowerCase());
+            const matchType = architectureTypeFilter === 'all' || arch.architectureType === architectureTypeFilter;
+            return matchSearch && matchType;
+        });
+    }, [allTemplateArchitectures, architectureSearchTerm, architectureTypeFilter]);
+
+    const filteredRoles = useMemo(() => {
+        return allRoles.filter((role: any) => {
+            if (!roleSearchTerm) return true;
+            const keyword = roleSearchTerm.toLowerCase();
+            return role.roleName?.toLowerCase().includes(keyword) || role.roleId?.toString() === roleSearchTerm;
+        });
+    }, [allRoles, roleSearchTerm]);
+
+    const filteredApiKeys = useMemo(() => {
+        return allApiKeys.filter((apiKey: any) => {
+            const matchProvider = !apiKeyProviderFilter || apiKey.provider === apiKeyProviderFilter;
+            const matchSearch = !apiKeySearchTerm
+                || apiKey.apiKeyId?.toString() === apiKeySearchTerm
+                || apiKey.keyValue?.toLowerCase().includes(apiKeySearchTerm.toLowerCase());
+            return matchProvider && matchSearch;
+        });
+    }, [allApiKeys, apiKeyProviderFilter, apiKeySearchTerm]);
+
+    const filteredPaymentMethods = useMemo(() => {
+        return allPaymentMethods.filter((method: any) => {
+            const matchProvider = paymentMethodProviderFilter === 'all' || method.provider === paymentMethodProviderFilter;
+            const matchStatus = paymentMethodStatusFilter === 'all'
+                || (paymentMethodStatusFilter === 'active' && method.isActive)
+                || (paymentMethodStatusFilter === 'inactive' && !method.isActive);
+            const matchSearch = !paymentMethodSearchTerm
+                || method.paymentMethodId?.toString() === paymentMethodSearchTerm
+                || method.userId?.toString() === paymentMethodSearchTerm;
+            return matchProvider && matchStatus && matchSearch;
+        });
+    }, [allPaymentMethods, paymentMethodProviderFilter, paymentMethodSearchTerm, paymentMethodStatusFilter]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize));
+        if (userPage > totalPages) {
+            setUserPage(totalPages);
+        }
+    }, [filteredUsers.length, userPage, userPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredOrders.length / orderPageSize));
+        if (orderPage > totalPages) {
+            setOrderPage(totalPages);
+        }
+    }, [filteredOrders.length, orderPage, orderPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / transactionPageSize));
+        if (transactionPage > totalPages) {
+            setTransactionPage(totalPages);
+        }
+    }, [filteredTransactions.length, transactionPage, transactionPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredPayments.length / paymentPageSize));
+        if (paymentPage > totalPages) {
+            setPaymentPage(totalPages);
+        }
+    }, [filteredPayments.length, paymentPage, paymentPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredPosts.length / postPageSize));
+        if (postPage > totalPages) {
+            setPostPage(totalPages);
+        }
+    }, [filteredPosts.length, postPage, postPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredAIHistories.length / aiPageSize));
+        if (aiPage > totalPages) {
+            setAiPage(totalPages);
+        }
+    }, [filteredAIHistories.length, aiPage, aiPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredArchitectures.length / architecturePageSize));
+        if (architecturePage > totalPages) {
+            setArchitecturePage(totalPages);
+        }
+    }, [filteredArchitectures.length, architecturePage, architecturePageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredRoles.length / rolePageSize));
+        if (rolePage > totalPages) {
+            setRolePage(totalPages);
+        }
+    }, [filteredRoles.length, rolePage, rolePageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredApiKeys.length / apiKeyPageSize));
+        if (apiKeyPage > totalPages) {
+            setApiKeyPage(totalPages);
+        }
+    }, [filteredApiKeys.length, apiKeyPage, apiKeyPageSize]);
+
+    useEffect(() => {
+        const totalPages = Math.max(1, Math.ceil(filteredPaymentMethods.length / paymentMethodPageSize));
+        if (paymentMethodPage > totalPages) {
+            setPaymentMethodPage(totalPages);
+        }
+    }, [filteredPaymentMethods.length, paymentMethodPage, paymentMethodPageSize]);
 
     return (
         <div className="min-h-screen bg-[#131327] text-white flex">
             {/* Sidebar */}
-            <aside className="w-64 bg-[#17172b] border-r border-[#2a2a44] p-4 space-y-2">
-                <div className="text-lg font-semibold mb-3">Bảng điều khiển</div>
-                <SidebarButton active={activeView === 'manage'} onClick={() => setActiveView('manage')}>Quản lý</SidebarButton>
-                <SidebarButton active={activeView === 'managePrompt'} onClick={() => setActiveView('managePrompt')}>Quản lý prompt</SidebarButton>
-                <SidebarButton active={activeView === 'createPrompt'} onClick={() => setActiveView('createPrompt')}>Tạo Prompt</SidebarButton>
-                <SidebarButton active={activeView === 'createPackage'} onClick={() => setActiveView('createPackage')}>Tạo Package</SidebarButton>
-                <SidebarButton active={activeView === 'managePackages'} onClick={() => setActiveView('managePackages')}>Quản lý Package</SidebarButton>
-                <SidebarButton active={activeView === 'createCategory'} onClick={() => setActiveView('createCategory')}>Tạo Phân Loại</SidebarButton>
-                <SidebarButton active={activeView === 'manageReviews'} onClick={() => setActiveView('manageReviews')}>Quản lý Reviews</SidebarButton>
+            <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-[#17172b] border-r border-[#2a2a44] transition-all duration-300 flex flex-col`}>
+                <div className="p-4 flex items-center justify-between border-b border-[#2a2a44]">
+                    {!sidebarCollapsed && <div className="text-lg font-bold text-white">EduPrompt</div>}
+                    <button
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        className="p-2 hover:bg-[#2a2a44] rounded-lg transition-colors"
+                        title={sidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
+                    >
+                        <div className={`w-5 h-5 border-t-2 border-b-2 border-white ${sidebarCollapsed ? 'border-l-2 border-r-0' : 'border-l-0 border-r-2'}`}></div>
+                    </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-1">
+                    {/* Dashboard */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Dashboard</div>}
+                        <SidebarButton 
+                            active={activeView === 'dashboard' || activeView === 'manage'} 
+                            onClick={() => setActiveView('dashboard')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Tổng quan</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
 
-                <div className="mt-4 pt-4 border-t border-[#2a2a44]"></div>
+                    {/* Users */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Người dùng</div>}
+                        <SidebarButton 
+                            active={activeView === 'users'} 
+                            onClick={() => setActiveView('users')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Users className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Quản lý Users</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'createUser'} 
+                            onClick={() => setActiveView('createUser')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Plus className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Tạo User</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+
+                    {/* Content */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Nội dung</div>}
+                        <SidebarButton 
+                            active={activeView === 'packages' || activeView === 'managePackages'} 
+                            onClick={() => setActiveView('packages')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <PackageIcon className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Packages</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'createPackage'} 
+                            onClick={() => setActiveView('createPackage')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Plus className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Tạo Package</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'packageCategories' || activeView === 'createCategory'} 
+                            onClick={() => setActiveView('packageCategories')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Archive className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Categories</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'templates' || activeView === 'managePrompt'} 
+                            onClick={() => setActiveView('templates')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <FileText className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Templates</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'templateArchitectures'} 
+                            onClick={() => setActiveView('templateArchitectures')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Settings className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Template Architectures</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'createPrompt' || activeView === 'createTemplateArchitecture'} 
+                            onClick={() => setActiveView('createPrompt')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Plus className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Tạo Template</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'posts'} 
+                            onClick={() => setActiveView('posts')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <FileText className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Posts</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+
+                    {/* Orders & Payments */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Đơn hàng & Thanh toán</div>}
+                        <SidebarButton 
+                            active={activeView === 'orders'} 
+                            onClick={() => setActiveView('orders')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <ShoppingCart className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Orders</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'transactions'} 
+                            onClick={() => setActiveView('transactions')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Transactions</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'payments'} 
+                            onClick={() => setActiveView('payments')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <CreditCard className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Payments</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'wallets' || activeView === 'manageWallets'} 
+                            onClick={() => setActiveView('wallets')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <WalletIcon className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Wallets</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+
+                    {/* AI & Analytics */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">AI & Phân tích</div>}
+                        <SidebarButton 
+                            active={activeView === 'aiHistories'} 
+                            onClick={() => setActiveView('aiHistories')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Sparkles className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>AI Histories</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'aiStats'} 
+                            onClick={() => setActiveView('aiStats')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <BarChart3 className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>AI Stats</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+
+                    {/* Reviews */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Đánh giá</div>}
+                        <SidebarButton 
+                            active={activeView === 'reviews' || activeView === 'manageReviews'} 
+                            onClick={() => setActiveView('reviews')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Reviews</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+
+                    {/* System Settings */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Hệ thống</div>}
+                        <SidebarButton 
+                            active={activeView === 'apiKeys'} 
+                            onClick={() => setActiveView('apiKeys')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Key className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>API Keys</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'roles'} 
+                            onClick={() => setActiveView('roles')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Shield className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Roles</span>}
+                            </div>
+                        </SidebarButton>
+                        <SidebarButton 
+                            active={activeView === 'paymentMethods'} 
+                            onClick={() => setActiveView('paymentMethods')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <CreditCard className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Payment Methods</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
+                </div>
             </aside>
 
             {/* Main */}
-            <main className="flex-1 p-6">
+            <main className="flex-1 p-6 overflow-y-auto">
+                {/* Header */}
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold">Dashboard Admin</h1>
-                    <p className="text-neutral-400">Tổng quan hệ thống và thao tác quản trị</p>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        Dashboard Admin
+                    </h1>
+                    <p className="text-neutral-400 mt-1">Tổng quan hệ thống và thao tác quản trị</p>
                 </div>
 
-                {loading ? (
-                    <div className="text-neutral-300">Đang tải dữ liệu...</div>
-                ) : error ? (
-                    <div className="text-red-400">{error}</div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        <StatCard label="Tổng người dùng" value={totalUsers} />
-                        <StatCard label="Tổng gói (Package)" value={totalPackages} />
-                        <StatCard label="Lịch sử AI" value={totalAIHistory} />
-                        <StatCard label="Tổng Templates" value={totalTemplates} />
-                    </div>
+                {/* Dashboard Overview */}
+                {(activeView === 'dashboard' || activeView === 'manage') && (
+                    <>
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                <p className="text-neutral-400 mt-4">Đang tải dữ liệu...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-400">{error}</div>
+                        ) : (
+                            <>
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                    <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Tổng người dùng</div>
+                                            <Users className="w-5 h-5 text-blue-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalUsers}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">Active users</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Tổng Packages</div>
+                                            <PackageIcon className="w-5 h-5 text-green-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalPackages}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">Available packages</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Tổng Orders</div>
+                                            <ShoppingCart className="w-5 h-5 text-purple-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalOrders}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">All orders</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Doanh thu</div>
+                                            <TrendingUp className="w-5 h-5 text-yellow-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalRevenue.toLocaleString('vi-VN')}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">VND</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Transactions</div>
+                                            <CreditCard className="w-5 h-5 text-cyan-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalTransactions}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">All transactions</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/20 border border-pink-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Payments</div>
+                                            <CreditCard className="w-5 h-5 text-pink-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalPayments}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">All payments</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">AI Histories</div>
+                                            <Sparkles className="w-5 h-5 text-indigo-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalAIHistory}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">AI interactions</div>
+                                    </div>
+                                    
+                                    <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-xl p-5 hover:scale-105 transition-transform">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-neutral-400 text-sm font-medium">Templates</div>
+                                            <FileText className="w-5 h-5 text-orange-400" />
+                                        </div>
+                                        <div className="text-3xl font-bold text-white">{totalTemplates}</div>
+                                        <div className="text-xs text-neutral-500 mt-2">Available templates</div>
+                                    </div>
+                                </div>
+
+                                {/* Quick Actions */}
+                                <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6 mb-6">
+                                    <h2 className="text-xl font-semibold mb-4">Thao tác nhanh</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <button
+                                            onClick={() => setActiveView('users')}
+                                            className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50 hover:bg-[#1f1f33] transition-colors text-left"
+                                        >
+                                            <Users className="w-5 h-5 text-blue-400 mb-2" />
+                                            <div className="text-sm font-medium">Quản lý Users</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveView('orders')}
+                                            className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-green-500/50 hover:bg-[#1f1f33] transition-colors text-left"
+                                        >
+                                            <ShoppingCart className="w-5 h-5 text-green-400 mb-2" />
+                                            <div className="text-sm font-medium">Xem Orders</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveView('packages')}
+                                            className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-purple-500/50 hover:bg-[#1f1f33] transition-colors text-left"
+                                        >
+                                            <PackageIcon className="w-5 h-5 text-purple-400 mb-2" />
+                                            <div className="text-sm font-medium">Quản lý Packages</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveView('wallets')}
+                                            className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-yellow-500/50 hover:bg-[#1f1f33] transition-colors text-left"
+                                        >
+                                            <WalletIcon className="w-5 h-5 text-yellow-400 mb-2" />
+                                            <div className="text-sm font-medium">Quản lý Wallets</div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">Orders theo trạng thái</h3>
+                                                <p className="text-neutral-500 text-sm">Phân phối đơn hàng</p>
+                                            </div>
+                                            <ShoppingCart className="w-5 h-5 text-purple-300" />
+                                        </div>
+                                        <div className="flex items-end gap-3 h-40">
+                                            {ordersChartData.data.length === 0 ? (
+                                                <div className="text-neutral-500 text-sm">Chưa có dữ liệu</div>
+                                            ) : (
+                                                ordersChartData.data.map(({ label, count }) => (
+                                                    <div key={label} className="flex-1 flex flex-col justify-end items-center gap-2">
+                                                        <div
+                                                            className="w-full rounded-t bg-gradient-to-t from-purple-700/30 to-purple-400/60"
+                                                            style={{ height: `${ordersChartData.max ? (count / ordersChartData.max) * 100 : 0}%` }}
+                                                        ></div>
+                                                        <div className="text-xs text-neutral-400 text-center truncate w-full" title={label}>{label}</div>
+                                                        <div className="text-sm font-semibold text-white">{count}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">Transactions theo loại</h3>
+                                                <p className="text-neutral-500 text-sm">Dòng tiền</p>
+                                            </div>
+                                            <TrendingUp className="w-5 h-5 text-cyan-300" />
+                                        </div>
+                                        <div className="flex items-end gap-3 h-40">
+                                            {transactionsChartData.data.length === 0 ? (
+                                                <div className="text-neutral-500 text-sm">Chưa có dữ liệu</div>
+                                            ) : (
+                                                transactionsChartData.data.map(({ label, count }) => (
+                                                    <div key={label} className="flex-1 flex flex-col justify-end items-center gap-2">
+                                                        <div
+                                                            className="w-full rounded-t bg-gradient-to-t from-cyan-700/30 to-cyan-400/60"
+                                                            style={{ height: `${transactionsChartData.max ? (count / transactionsChartData.max) * 100 : 0}%` }}
+                                                        ></div>
+                                                        <div className="text-xs text-neutral-400 text-center truncate w-full" title={label}>{label}</div>
+                                                        <div className="text-sm font-semibold text-white">{count}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">Payments theo trạng thái</h3>
+                                                <p className="text-neutral-500 text-sm">Thanh toán hệ thống</p>
+                                            </div>
+                                            <CreditCard className="w-5 h-5 text-amber-300" />
+                                        </div>
+                                        <div className="flex items-end gap-3 h-40">
+                                            {paymentsChartData.data.length === 0 ? (
+                                                <div className="text-neutral-500 text-sm">Chưa có dữ liệu</div>
+                                            ) : (
+                                                paymentsChartData.data.map(({ label, count }) => (
+                                                    <div key={label} className="flex-1 flex flex-col justify-end items-center gap-2">
+                                                        <div
+                                                            className="w-full rounded-t bg-gradient-to-t from-amber-700/30 to-amber-400/60"
+                                                            style={{ height: `${paymentsChartData.max ? (count / paymentsChartData.max) * 100 : 0}%` }}
+                                                        ></div>
+                                                        <div className="text-xs text-neutral-400 text-center truncate w-full" title={label}>{label}</div>
+                                                        <div className="text-sm font-semibold text-white">{count}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </>
                 )}
 
                 {/* Views */}
@@ -2356,6 +3501,1640 @@ const DashboardAdmin: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Users Management */}
+                {activeView === 'users' && (() => {
+                    const totalRows = filteredUsers.length;
+                    const currentPage = Math.min(userPage, Math.max(1, Math.ceil(totalRows / userPageSize) || 1));
+                    const paginatedUsers = slicePage(filteredUsers, currentPage, userPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Users className="w-5 h-5" />
+                                            Quản lý Users
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('users', filteredUsers)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm kiếm user..."
+                                                value={userSearchTerm}
+                                                onChange={(e) => {
+                                                    setUserSearchTerm(e.target.value);
+                                                    setUserPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={userRoleFilter}
+                                            onChange={(e) => {
+                                                setUserRoleFilter(e.target.value as 'all' | 'admin' | 'user');
+                                                setUserPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả roles</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="user">User</option>
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingUsers(true);
+                                                    const users = await userService.getAllUsers();
+                                                    setAllUsers(users);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải danh sách users', 'error');
+                                                } finally {
+                                                    setLoadingUsers(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingUsers ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Email</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tên</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Role</th>
+                                                    <th className="text-right py-3 px-4 text-neutral-400 font-medium">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedUsers.map((user) => (
+                                                    <tr key={user.userId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{user.userId}</td>
+                                                        <td className="py-3 px-4">{user.email}</td>
+                                                        <td className="py-3 px-4">{user.fullName || '-'}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${user.roleId === 1 ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                                                                {user.roleId === 1 ? 'Admin' : 'User'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => showToast('Tính năng đang phát triển', 'info')}
+                                                                    className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 rounded text-sm transition-colors"
+                                                                >
+                                                                    Chi tiết
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có users nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    userPageSize,
+                                    (page) => setUserPage(page),
+                                    (size) => {
+                                        setUserPageSize(size);
+                                        setUserPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Orders Management */}
+                {activeView === 'orders' && (() => {
+                    const totalRows = filteredOrders.length;
+                    const currentPage = Math.min(orderPage, Math.max(1, Math.ceil(totalRows / orderPageSize) || 1));
+                    const paginatedOrders = slicePage(filteredOrders, currentPage, orderPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <ShoppingCart className="w-5 h-5" />
+                                            Quản lý Orders
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('orders', filteredOrders)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo order #, user ID..."
+                                                value={orderSearchTerm}
+                                                onChange={(e) => {
+                                                    setOrderSearchTerm(e.target.value);
+                                                    setOrderPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={orderStatusFilter}
+                                            onChange={(e) => {
+                                                setOrderStatusFilter(e.target.value);
+                                                setOrderPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả trạng thái</option>
+                                            {orderStatusOptions.map((status) => (
+                                                <option key={status} value={status}>
+                                                    {status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingOrders(true);
+                                                    const orders = await orderService.getAllOrders();
+                                                    setAllOrders(orders);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải danh sách orders', 'error');
+                                                } finally {
+                                                    setLoadingOrders(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingOrders ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Order ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Order Number</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">User ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tổng tiền</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Status</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                    <th className="text-right py-3 px-4 text-neutral-400 font-medium">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedOrders.map((order) => (
+                                                    <tr key={order.orderId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{order.orderId}</td>
+                                                        <td className="py-3 px-4">{order.orderNumber}</td>
+                                                        <td className="py-3 px-4">{order.userId}</td>
+                                                        <td className="py-3 px-4">{order.totalAmount?.toLocaleString('vi-VN')} VND</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${
+                                                                order.status === 'Paid' || order.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                                                                order.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                'bg-red-500/20 text-red-400'
+                                                            }`}>
+                                                                {order.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {new Date(order.orderDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-right">
+                                                            <button
+                                                                onClick={() => showToast('Tính năng đang phát triển', 'info')}
+                                                                className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 rounded text-sm transition-colors"
+                                                            >
+                                                                Chi tiết
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có orders nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    orderPageSize,
+                                    (page) => setOrderPage(page),
+                                    (size) => {
+                                        setOrderPageSize(size);
+                                        setOrderPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Transactions Management */}
+                {activeView === 'transactions' && (() => {
+                    const totalRows = filteredTransactions.length;
+                    const currentPage = Math.min(transactionPage, Math.max(1, Math.ceil(totalRows / transactionPageSize) || 1));
+                    const paginatedTransactions = slicePage(filteredTransactions, currentPage, transactionPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <TrendingUp className="w-5 h-5" />
+                                            Quản lý Transactions
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('transactions', filteredTransactions)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-3 md:flex-row">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo mã giao dịch..."
+                                                value={transactionSearchTerm}
+                                                onChange={(e) => {
+                                                    setTransactionSearchTerm(e.target.value);
+                                                    setTransactionPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={transactionTypeFilter}
+                                            onChange={(e) => {
+                                                setTransactionTypeFilter(e.target.value);
+                                                setTransactionPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả loại</option>
+                                            {transactionTypeOptions.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={transactionStatusFilter}
+                                            onChange={(e) => {
+                                                setTransactionStatusFilter(e.target.value);
+                                                setTransactionPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả trạng thái</option>
+                                            {transactionStatusOptions.map((status) => (
+                                                <option key={status} value={status}>
+                                                    {status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingTransactions(true);
+                                                    const transactions = await transactionService.getAllTransactions();
+                                                    setAllTransactions(transactions);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải danh sách transactions', 'error');
+                                                } finally {
+                                                    setLoadingTransactions(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingTransactions ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Transaction ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Wallet ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Loại</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Số tiền</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Status</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedTransactions.map((tx) => (
+                                                    <tr key={tx.transactionId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{tx.transactionId}</td>
+                                                        <td className="py-3 px-4">{tx.walletId || '-'}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
+                                                                {tx.transactionType}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`py-3 px-4 font-semibold ${tx.transactionType === 'DEBIT' ? 'text-red-400' : 'text-green-400'}`}>
+                                                            {tx.transactionType === 'DEBIT' ? '-' : '+'}
+                                                            {tx.amount?.toLocaleString('vi-VN')} VND
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${
+                                                                tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                                                                tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                'bg-red-500/20 text-red-400'
+                                                            }`}>
+                                                                {tx.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {new Date(tx.transactionDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có transactions nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    transactionPageSize,
+                                    (page) => setTransactionPage(page),
+                                    (size) => {
+                                        setTransactionPageSize(size);
+                                        setTransactionPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Payments Management */}
+                {activeView === 'payments' && (() => {
+                    const totalRows = filteredPayments.length;
+                    const currentPage = Math.min(paymentPage, Math.max(1, Math.ceil(totalRows / paymentPageSize) || 1));
+                    const paginatedPayments = slicePage(filteredPayments, currentPage, paymentPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <CreditCard className="w-5 h-5" />
+                                            Quản lý Payments
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('payments', filteredPayments)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-3 md:flex-row">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo payment, order..."
+                                                value={paymentSearchTerm}
+                                                onChange={(e) => {
+                                                    setPaymentSearchTerm(e.target.value);
+                                                    setPaymentPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={paymentStatusFilter}
+                                            onChange={(e) => {
+                                                setPaymentStatusFilter(e.target.value);
+                                                setPaymentPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả trạng thái</option>
+                                            {paymentStatusOptions.map((status) => (
+                                                <option key={status} value={status}>
+                                                    {status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingPayments(true);
+                                                    const response = await paymentService.getAll();
+                                                    const payments = Array.isArray(response.data) ? response.data : response;
+                                                    setAllPayments(payments);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải danh sách payments', 'error');
+                                                } finally {
+                                                    setLoadingPayments(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingPayments ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Payment ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Order ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Amount</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Provider</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Status</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedPayments.map((payment: any) => (
+                                                    <tr key={payment.paymentId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{payment.paymentId}</td>
+                                                        <td className="py-3 px-4">{payment.orderId || '-'}</td>
+                                                        <td className="py-3 px-4">{payment.amount?.toLocaleString('vi-VN')} VND</td>
+                                                        <td className="py-3 px-4">{payment.provider || 'VNPay'}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${
+                                                                payment.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
+                                                                payment.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                'bg-red-500/20 text-red-400'
+                                                            }`}>
+                                                                {payment.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {payment.createdDate ? new Date(payment.createdDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có payments nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    paymentPageSize,
+                                    (page) => setPaymentPage(page),
+                                    (size) => {
+                                        setPaymentPageSize(size);
+                                        setPaymentPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Wallets Management - Keep existing */}
+                {(activeView === 'wallets' || activeView === 'manageWallets') && (
+                    <div className="space-y-6">
+                        <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold flex items-center gap-2">
+                                    <WalletIcon className="w-5 h-5" />
+                                    Quản lý ví tiền
+                                </h2>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            setLoadingWallets(true);
+                                            const usersList = await userService.getAllUsers().catch(() => []);
+                                            
+                                            const walletsMap = new Map<number, Wallet>();
+                                            const transactionsMap = new Map<number, Transaction[]>();
+                                            
+                                            for (const user of usersList) {
+                                                try {
+                                                    const wallet = await walletService.getWalletByUserId(user.userId).catch(() => null);
+                                                    if (wallet) {
+                                                        walletsMap.set(user.userId, wallet);
+                                                        const transactions = await transactionService.getTransactionsByUserId(user.userId).catch(() => []);
+                                                        transactionsMap.set(user.userId, transactions);
+                                                    }
+                                                } catch (e) {
+                                                    console.error(`Failed to load wallet for user ${user.userId}:`, e);
+                                                }
+                                            }
+                                            
+                                            setUserWallets(walletsMap);
+                                            setUserTransactions(transactionsMap);
+                                            showToast('Đã làm mới danh sách ví tiền', 'success');
+                                        } catch (e) {
+                                            showToast('Không thể làm mới danh sách ví tiền', 'error');
+                                        } finally {
+                                            setLoadingWallets(false);
+                                        }
+                                    }}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm"
+                                    disabled={loadingWallets}
+                                >
+                                    🔄 Làm mới
+                                </button>
+                            </div>
+
+                            {loadingWallets ? (
+                                <div className="text-center py-8 text-neutral-400">Đang tải thông tin ví tiền...</div>
+                            ) : userWallets.size === 0 ? (
+                                <div className="text-center py-8 text-neutral-400">Chưa có ví tiền nào</div>
+                            ) : (
+                                <div className="space-y-4 max-h-[700px] overflow-y-auto">
+                                    {Array.from(userWallets.entries()).map(([userId, wallet]) => {
+                                        const user = users.find(u => u.userId === userId);
+                                        const transactions = userTransactions.get(userId) || [];
+                                        const isExpanded = expandedWallets.has(userId);
+                                        
+                                        return (
+                                            <div
+                                                key={userId}
+                                                className="p-4 bg-[#23233a] border border-[#2a2a44] rounded-lg"
+                                            >
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        {/* User Info */}
+                                                        <div className="flex items-center space-x-3 mb-3">
+                                                            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                                                                <WalletIcon className="w-5 h-5 text-white" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-semibold text-white">
+                                                                    {user?.fullName || user?.email || `User #${userId}`}
+                                                                </div>
+                                                                <div className="text-xs text-neutral-400">
+                                                                    {user?.email && user?.email !== user?.fullName && user.email}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Wallet Info */}
+                                                        <div className="grid grid-cols-2 gap-4 mb-3">
+                                                            <div>
+                                                                <div className="text-xs text-neutral-400 mb-1">Số dư</div>
+                                                                <div className="text-lg font-bold text-green-400">
+                                                                    {wallet.balance.toLocaleString('vi-VN')} {wallet.currency || 'VND'}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-xs text-neutral-400 mb-1">Trạng thái</div>
+                                                                <div className={`text-sm font-semibold ${
+                                                                    wallet.status === 'Active' ? 'text-green-400' : 
+                                                                    wallet.status === 'Suspended' ? 'text-yellow-400' : 
+                                                                    'text-red-400'
+                                                                }`}>
+                                                                    {wallet.status === 'Active' ? 'Hoạt động' : 
+                                                                     wallet.status === 'Suspended' ? 'Tạm khóa' : 
+                                                                     'Vô hiệu'}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-xs text-neutral-400 mb-1">Ngày tạo</div>
+                                                                <div className="text-sm text-neutral-300">
+                                                                    {new Date(wallet.createdDate).toLocaleDateString('vi-VN', { 
+                                                                        timeZone: 'Asia/Ho_Chi_Minh',
+                                                                        year: 'numeric',
+                                                                        month: '2-digit',
+                                                                        day: '2-digit'
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-xs text-neutral-400 mb-1">Số giao dịch</div>
+                                                                <div className="text-sm text-neutral-300">{transactions.length}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Transactions */}
+                                                        {isExpanded && (
+                                                            <div className="mt-4 pt-4 border-t border-[#2a2a44]">
+                                                                <div className="text-sm font-semibold mb-3">Lịch sử giao dịch ({transactions.length})</div>
+                                                                {transactions.length === 0 ? (
+                                                                    <div className="text-sm text-neutral-400">Chưa có giao dịch nào</div>
+                                                                ) : (
+                                                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                                                        {transactions.map((tx) => (
+                                                                            <div
+                                                                                key={tx.transactionId}
+                                                                                className="p-3 bg-[#1a1a2d] rounded-lg border border-[#2a2a44]"
+                                                                            >
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <div className="flex-1">
+                                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                                                                tx.transactionType === 'TopUp' || tx.transactionType === 'Deposit' ? 'bg-green-500/20 text-green-400' :
+                                                                                                tx.transactionType === 'Payment' ? 'bg-red-500/20 text-red-400' :
+                                                                                                'bg-blue-500/20 text-blue-400'
+                                                                                            }`}>
+                                                                                                {tx.transactionType === 'TopUp' ? 'Nạp tiền' :
+                                                                                                 tx.transactionType === 'Deposit' ? 'Nhận tiền' :
+                                                                                                 tx.transactionType === 'Payment' ? 'Thanh toán' :
+                                                                                                 tx.transactionType === 'ExternalPayment' ? 'Thanh toán ngoài' :
+                                                                                                 tx.transactionType}
+                                                                                            </span>
+                                                                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                                                                tx.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
+                                                                                                tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                                                'bg-red-500/20 text-red-400'
+                                                                                            }`}>
+                                                                                                {tx.status === 'Completed' ? 'Hoàn thành' :
+                                                                                                 tx.status === 'Pending' ? 'Đang xử lý' :
+                                                                                                 tx.status === 'Failed' ? 'Thất bại' :
+                                                                                                 tx.status}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div className="text-sm text-neutral-300">
+                                                                                            {tx.transactionReference || `Giao dịch #${tx.transactionId}`}
+                                                                                        </div>
+                                                                                        <div className="text-xs text-neutral-500 mt-1">
+                                                                                            {new Date(tx.transactionDate).toLocaleString('vi-VN', { 
+                                                                                                timeZone: 'Asia/Ho_Chi_Minh'
+                                                                                            })}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className={`text-lg font-bold ${
+                                                                                        tx.transactionType === 'TopUp' || tx.transactionType === 'Deposit' ? 'text-green-400' :
+                                                                                        'text-red-400'
+                                                                                    }`}>
+                                                                                        {tx.transactionType === 'TopUp' || tx.transactionType === 'Deposit' ? '+' : '-'}
+                                                                                        {tx.amount.toLocaleString('vi-VN')} {wallet.currency || 'VND'}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    <div className="flex flex-col gap-2 ml-4">
+                                                        <button
+                                                            onClick={() => {
+                                                                const newExpanded = new Set(expandedWallets);
+                                                                if (isExpanded) {
+                                                                    newExpanded.delete(userId);
+                                                                } else {
+                                                                    newExpanded.add(userId);
+                                                                }
+                                                                setExpandedWallets(newExpanded);
+                                                            }}
+                                                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded"
+                                                            title={isExpanded ? 'Ẩn giao dịch' : 'Xem giao dịch'}
+                                                        >
+                                                            {isExpanded ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setFundsForm({ userId, amount: '', type: 'add' })}
+                                                            className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded"
+                                                            title="Nạp tiền"
+                                                        >
+                                                            <Plus className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setFundsForm({ userId, amount: '', type: 'deduct' })}
+                                                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded"
+                                                            title="Trừ tiền"
+                                                        >
+                                                            <Minus className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Funds Form Modal */}
+                        {fundsForm && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                                <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6 w-full max-w-md">
+                                    <h3 className="text-xl font-semibold mb-4">
+                                        {fundsForm.type === 'add' ? 'Nạp tiền vào ví' : 'Trừ tiền từ ví'}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm text-neutral-400 mb-2">Số tiền</label>
+                                            <input
+                                                type="number"
+                                                value={fundsForm.amount}
+                                                onChange={(e) => setFundsForm({ ...fundsForm, amount: e.target.value })}
+                                                className="w-full px-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white"
+                                                placeholder="Nhập số tiền"
+                                                min="0"
+                                                step="0.01"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!fundsForm.amount || parseFloat(fundsForm.amount) <= 0) {
+                                                        showToast('Vui lòng nhập số tiền hợp lệ', 'error');
+                                                        return;
+                                                    }
+                                                    try {
+                                                        if (fundsForm.type === 'add') {
+                                                            await walletService.addFunds({
+                                                                userId: fundsForm.userId,
+                                                                amount: parseFloat(fundsForm.amount)
+                                                            });
+                                                            showToast('Nạp tiền thành công', 'success');
+                                                        } else {
+                                                            await walletService.deductFunds({
+                                                                userId: fundsForm.userId,
+                                                                amount: parseFloat(fundsForm.amount)
+                                                            });
+                                                            showToast('Trừ tiền thành công', 'success');
+                                                        }
+                                                        
+                                                        // Reload wallet data
+                                                        const wallet = await walletService.getWalletByUserId(fundsForm.userId).catch(() => null);
+                                                        if (wallet) {
+                                                            setUserWallets(prev => {
+                                                                const newMap = new Map(prev);
+                                                                newMap.set(fundsForm.userId, wallet);
+                                                                return newMap;
+                                                            });
+                                                            
+                                                            const transactions = await transactionService.getTransactionsByUserId(fundsForm.userId).catch(() => []);
+                                                            setUserTransactions(prev => {
+                                                                const newMap = new Map(prev);
+                                                                newMap.set(fundsForm.userId, transactions);
+                                                                return newMap;
+                                                            });
+                                                        }
+                                                        
+                                                        setFundsForm(null);
+                                                    } catch (e: any) {
+                                                        const msg = e?.response?.data?.message || e?.message || 'Thao tác thất bại';
+                                                        showToast(msg, 'error');
+                                                    }
+                                                }}
+                                                className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white"
+                                            >
+                                                Xác nhận
+                                            </button>
+                                            <button
+                                                onClick={() => setFundsForm(null)}
+                                                className="flex-1 px-4 py-2 rounded-lg bg-[#2a2a44] hover:bg-[#3a3a54] text-white"
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Posts Management */}
+                {activeView === 'posts' && (() => {
+                    const totalRows = filteredPosts.length;
+                    const currentPage = Math.min(postPage, Math.max(1, Math.ceil(totalRows / postPageSize) || 1));
+                    const paginatedPosts = slicePage(filteredPosts, currentPage, postPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <FileText className="w-5 h-5" />
+                                            Quản lý Posts
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('posts', filteredPosts)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-3 md:flex-row">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo tiêu đề, ID..."
+                                                value={postSearchTerm}
+                                                onChange={(e) => {
+                                                    setPostSearchTerm(e.target.value);
+                                                    setPostPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={postStatusFilter}
+                                            onChange={(e) => {
+                                                setPostStatusFilter(e.target.value);
+                                                setPostPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả trạng thái</option>
+                                            {postStatusOptions.map((status) => (
+                                                <option key={status} value={status}>
+                                                    {status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={postTypeFilter}
+                                            onChange={(e) => {
+                                                setPostTypeFilter(e.target.value);
+                                                setPostPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả loại</option>
+                                            {postTypeOptions.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingPosts(true);
+                                                    const posts = await postService.getAllPosts();
+                                                    setAllPosts(posts);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải danh sách posts', 'error');
+                                                } finally {
+                                                    setLoadingPosts(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingPosts ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Post ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tiêu đề</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Loại</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Trạng thái</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Giá</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedPosts.map((post) => (
+                                                    <tr key={post.postId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{post.postId}</td>
+                                                        <td className="py-3 px-4">{post.title}</td>
+                                                        <td className="py-3 px-4">{post.postType || '-'}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${post.status === 'Published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                                                {post.status || 'Unknown'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">{post.price ? `${post.price.toLocaleString('vi-VN')} VND` : '-'}</td>
+                                                        <td className="py-3 px-4">{post.createdDate ? new Date(post.createdDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có posts nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    postPageSize,
+                                    (page) => setPostPage(page),
+                                    (size) => {
+                                        setPostPageSize(size);
+                                        setPostPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* AI Histories Management */}
+                {activeView === 'aiHistories' && (() => {
+                    const totalRows = filteredAIHistories.length;
+                    const currentPage = Math.min(aiPage, Math.max(1, Math.ceil(totalRows / aiPageSize) || 1));
+                    const paginatedHistories = slicePage(filteredAIHistories, currentPage, aiPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Sparkles className="w-5 h-5" />
+                                            Lịch sử AI
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('ai-histories', filteredAIHistories)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo user, prompt..."
+                                                value={aiSearchTerm}
+                                                onChange={(e) => {
+                                                    setAiSearchTerm(e.target.value);
+                                                    setAiPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingAIHistories(true);
+                                                    const histories = await aiHistoryService.getAllHistory();
+                                                    setAllAIHistories(histories);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải lịch sử AI', 'error');
+                                                } finally {
+                                                    setLoadingAIHistories(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingAIHistories ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">History ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">User</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Instance</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Prompt</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Response</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedHistories.map((history) => (
+                                                    <tr key={history.historyId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{history.historyId}</td>
+                                                        <td className="py-3 px-4">{history.userId}</td>
+                                                        <td className="py-3 px-4">{history.instanceId}</td>
+                                                        <td className="py-3 px-4 max-w-xs truncate" title={history.promptText}>{history.promptText || '-'}</td>
+                                                        <td className="py-3 px-4 max-w-xs truncate" title={history.responseText}>{history.responseText || '-'}</td>
+                                                        <td className="py-3 px-4">{history.createdAt ? new Date(history.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có lịch sử AI</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    aiPageSize,
+                                    (page) => setAiPage(page),
+                                    (size) => {
+                                        setAiPageSize(size);
+                                        setAiPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Template Architectures Management */}
+                {activeView === 'templateArchitectures' && (() => {
+                    const totalRows = filteredArchitectures.length;
+                    const currentPage = Math.min(architecturePage, Math.max(1, Math.ceil(totalRows / architecturePageSize) || 1));
+                    const paginatedArchitectures = slicePage(filteredArchitectures, currentPage, architecturePageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Settings className="w-5 h-5" />
+                                            Template Architectures
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('template-architectures', filteredArchitectures)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo tên kiến trúc"
+                                                value={architectureSearchTerm}
+                                                onChange={(e) => {
+                                                    setArchitectureSearchTerm(e.target.value);
+                                                    setArchitecturePage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={architectureTypeFilter}
+                                            onChange={(e) => {
+                                                setArchitectureTypeFilter(e.target.value);
+                                                setArchitecturePage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả loại</option>
+                                            {architectureTypeOptions.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingTemplateArchitectures(true);
+                                                    const architectures = await templateArchitectureService.getAll();
+                                                    setAllTemplateArchitectures(architectures);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải template architectures', 'error');
+                                                } finally {
+                                                    setLoadingTemplateArchitectures(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingTemplateArchitectures ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tên</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Loại</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Storage ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedArchitectures.map((arch: any) => (
+                                                    <tr key={arch.architectureId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{arch.architectureId}</td>
+                                                        <td className="py-3 px-4">{arch.architectureName || '-'}</td>
+                                                        <td className="py-3 px-4">{arch.architectureType || '-'}</td>
+                                                        <td className="py-3 px-4">{arch.storageId || '-'}</td>
+                                                        <td className="py-3 px-4">{arch.createdAt ? new Date(arch.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có template architecture nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    architecturePageSize,
+                                    (page) => setArchitecturePage(page),
+                                    (size) => {
+                                        setArchitecturePageSize(size);
+                                        setArchitecturePage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Roles Management */}
+                {activeView === 'roles' && (() => {
+                    const totalRows = filteredRoles.length;
+                    const currentPage = Math.min(rolePage, Math.max(1, Math.ceil(totalRows / rolePageSize) || 1));
+                    const paginatedRoles = slicePage(filteredRoles, currentPage, rolePageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Shield className="w-5 h-5" />
+                                            Quản lý Roles
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('roles', filteredRoles)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo tên role"
+                                                value={roleSearchTerm}
+                                                onChange={(e) => {
+                                                    setRoleSearchTerm(e.target.value);
+                                                    setRolePage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingRoles(true);
+                                                    const roles = await roleService.getAllRoles();
+                                                    setAllRoles(roles);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải roles', 'error');
+                                                } finally {
+                                                    setLoadingRoles(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingRoles ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Role ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tên Role</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Mô tả</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedRoles.map((role: any) => (
+                                                    <tr key={role.roleId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{role.roleId}</td>
+                                                        <td className="py-3 px-4">{role.roleName}</td>
+                                                        <td className="py-3 px-4">{role.description || '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có role nào</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    rolePageSize,
+                                    (page) => setRolePage(page),
+                                    (size) => {
+                                        setRolePageSize(size);
+                                        setRolePage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* API Keys Management */}
+                {activeView === 'apiKeys' && (() => {
+                    const totalRows = filteredApiKeys.length;
+                    const currentPage = Math.min(apiKeyPage, Math.max(1, Math.ceil(totalRows / apiKeyPageSize) || 1));
+                    const paginatedApiKeys = slicePage(filteredApiKeys, currentPage, apiKeyPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Key className="w-5 h-5" />
+                                            API Keys
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('api-keys', filteredApiKeys)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-3 md:flex-row">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={apiKeyPackageId}
+                                            onChange={(e) => setApiKeyPackageId(e.target.value)}
+                                            placeholder="Package ID"
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        />
+                                        <select
+                                            value={apiKeyProviderFilter}
+                                            onChange={(e) => {
+                                                setApiKeyProviderFilter(e.target.value);
+                                                setApiKeyPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="">Tất cả provider</option>
+                                            {apiKeyProviderOptions.map((provider) => (
+                                                <option key={provider} value={provider}>
+                                                    {provider}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo khóa"
+                                                value={apiKeySearchTerm}
+                                                onChange={(e) => {
+                                                    setApiKeySearchTerm(e.target.value);
+                                                    setApiKeyPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!apiKeyPackageId) {
+                                                        showToast('Nhập Package ID để tra cứu', 'info');
+                                                        return;
+                                                    }
+                                                    try {
+                                                        setLoadingApiKeys(true);
+                                                        const keys = await apiKeyService.getByPackage(Number(apiKeyPackageId));
+                                                        setAllApiKeys(keys);
+                                                        setApiKeyPage(1);
+                                                    } catch (e) {
+                                                        showToast('Không lấy được API keys cho package này', 'error');
+                                                    } finally {
+                                                        setLoadingApiKeys(false);
+                                                    }
+                                                }}
+                                                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                            >
+                                                Tra cứu Package
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!apiKeyProviderFilter) {
+                                                        showToast('Chọn provider để tra cứu', 'info');
+                                                        return;
+                                                    }
+                                                    try {
+                                                        setLoadingApiKeys(true);
+                                                        const key = await apiKeyService.getActiveByProvider(apiKeyProviderFilter);
+                                                        setAllApiKeys(key ? [key] : []);
+                                                        setApiKeyPage(1);
+                                                    } catch (e) {
+                                                        showToast('Không lấy được API key cho provider này', 'error');
+                                                    } finally {
+                                                        setLoadingApiKeys(false);
+                                                    }
+                                                }}
+                                                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                                            >
+                                                Tra cứu Provider
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {loadingApiKeys ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full min-w-[720px]">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">API Key ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Package ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Provider</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Key</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Active</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Ngày tạo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedApiKeys.map((apiKey: any) => (
+                                                    <tr key={apiKey.apiKeyId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{apiKey.apiKeyId}</td>
+                                                        <td className="py-3 px-4">{apiKey.packageId}</td>
+                                                        <td className="py-3 px-4">{apiKey.provider}</td>
+                                                        <td className="py-3 px-4 max-w-xs truncate" title={apiKey.keyValue || ''}>{apiKey.keyValue || '-'}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${apiKey.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {apiKey.isActive ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">{apiKey.createdAt ? new Date(apiKey.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Chưa có dữ liệu API key</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    apiKeyPageSize,
+                                    (page) => setApiKeyPage(page),
+                                    (size) => {
+                                        setApiKeyPageSize(size);
+                                        setApiKeyPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Payment Methods Management */}
+                {activeView === 'paymentMethods' && (() => {
+                    const totalRows = filteredPaymentMethods.length;
+                    const currentPage = Math.min(paymentMethodPage, Math.max(1, Math.ceil(totalRows / paymentMethodPageSize) || 1));
+                    const paginatedPaymentMethods = slicePage(filteredPaymentMethods, currentPage, paymentMethodPageSize);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <CreditCard className="w-5 h-5" />
+                                            Phương thức thanh toán
+                                        </h2>
+                                        <button
+                                            onClick={() => exportToCsv('payment-methods', filteredPaymentMethods)}
+                                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-blue-500/50"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Xuất CSV
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-3 md:flex-row">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Tìm theo ID người dùng"
+                                                value={paymentMethodSearchTerm}
+                                                onChange={(e) => {
+                                                    setPaymentMethodSearchTerm(e.target.value);
+                                                    setPaymentMethodPage(1);
+                                                }}
+                                                className="pl-10 pr-4 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <select
+                                            value={paymentMethodProviderFilter}
+                                            onChange={(e) => {
+                                                setPaymentMethodProviderFilter(e.target.value);
+                                                setPaymentMethodPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả provider</option>
+                                            {paymentMethodProviderOptions.map((provider) => (
+                                                <option key={provider} value={provider}>
+                                                    {provider}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={paymentMethodStatusFilter}
+                                            onChange={(e) => {
+                                                setPaymentMethodStatusFilter(e.target.value);
+                                                setPaymentMethodPage(1);
+                                            }}
+                                            className="px-3 py-2 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">Tất cả trạng thái</option>
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setLoadingPaymentMethods(true);
+                                                    const methods = await paymentMethodService.getAllPaymentMethods();
+                                                    setAllPaymentMethods(methods);
+                                                } catch (e) {
+                                                    showToast('Lỗi khi tải payment methods', 'error');
+                                                } finally {
+                                                    setLoadingPaymentMethods(false);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                                        >
+                                            Làm mới
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loadingPaymentMethods ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto mt-4">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-[#2a2a44]">
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">User ID</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Provider</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Tên phương thức</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Trạng thái</th>
+                                                    <th className="text-left py-3 px-4 text-neutral-400 font-medium">Mặc định</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedPaymentMethods.map((method: any) => (
+                                                    <tr key={method.paymentMethodId} className="border-b border-[#2a2a44]/50 hover:bg-[#1a1a2d]">
+                                                        <td className="py-3 px-4">{method.paymentMethodId}</td>
+                                                        <td className="py-3 px-4">{method.userId}</td>
+                                                        <td className="py-3 px-4">{method.provider}</td>
+                                                        <td className="py-3 px-4">{method.methodName}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 rounded text-xs ${method.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {method.isActive ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {method.isDefault ? (
+                                                                <span className="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-300">Default</span>
+                                                            ) : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {totalRows === 0 && (
+                                            <div className="text-center py-8 text-neutral-400">Không có phương thức thanh toán</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {renderPagination(
+                                    currentPage,
+                                    totalRows,
+                                    paymentMethodPageSize,
+                                    (page) => setPaymentMethodPage(page),
+                                    (size) => {
+                                        setPaymentMethodPageSize(size);
+                                        setPaymentMethodPage(1);
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
             </main>
         </div>
     );
