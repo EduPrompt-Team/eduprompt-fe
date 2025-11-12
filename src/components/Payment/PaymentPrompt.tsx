@@ -1352,25 +1352,6 @@ const PaymentPrompt: React.FC = () => {
                         <div className="space-y-2">
                           <p className="text-xs text-neutral-400 mb-2">Chọn phương thức thanh toán VNPay:</p>
                           
-                          {/* VNPay QR Code */}
-                          <button 
-                            onClick={() => handleVnpayPayment('VNPAYQR')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>📱</span>
-                                <span>Thanh toán bằng QR Code</span>
-                              </>
-                            )}
-                          </button>
-                          
                           {/* VNPay Default */}
                           <button 
                             onClick={() => handleVnpayPayment()} 
@@ -1386,44 +1367,6 @@ const PaymentPrompt: React.FC = () => {
                               <>
                                 <span>💳</span>
                                 <span>Thanh toán VNPay (Mặc định)</span>
-                              </>
-                            )}
-                          </button>
-                          
-                          {/* VNPay ATM */}
-                          <button 
-                            onClick={() => handleVnpayPayment('VNBANK')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>🏦</span>
-                                <span>Thẻ nội địa (ATM)</span>
-                              </>
-                            )}
-                          </button>
-                          
-                          {/* VNPay International Card */}
-                          <button 
-                            onClick={() => handleVnpayPayment('INTCARD')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-500 hover:to-red-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>🌍</span>
-                                <span>Thẻ quốc tế (VISA/Mastercard)</span>
                               </>
                             )}
                           </button>
@@ -1462,7 +1405,6 @@ const PaymentPrompt: React.FC = () => {
                             Thanh toán an toàn qua VNPay:
                           </p>
                           <ul className="text-xs text-blue-200/80 mt-2 space-y-1 list-disc list-inside">
-                            <li>Hỗ trợ thẻ ATM, thẻ quốc tế, QR Code</li>
                             <li>Thanh toán được xử lý tự động sau khi hoàn tất</li>
                             <li>Bảo mật cao, được VNPay bảo vệ</li>
                           </ul>
