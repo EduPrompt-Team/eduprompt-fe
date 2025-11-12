@@ -216,7 +216,12 @@ const MyPackagesPage: React.FC = () => {
                               </svg>
                               <span>
                                 <strong className="text-neutral-300">Ngày mua:</strong>{' '}
-                                {new Date(pkg.purchasedDate).toLocaleDateString('vi-VN')}
+                                {new Date(pkg.purchasedDate).toLocaleDateString('vi-VN', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  timeZone: 'Asia/Ho_Chi_Minh'
+                                })}
                               </span>
                             </div>
                           )}
