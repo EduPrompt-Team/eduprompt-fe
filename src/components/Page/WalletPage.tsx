@@ -184,10 +184,10 @@ const WalletPage: React.FC = () => {
 
       const userId = Number(currentUser.userId);
       
-      // Thử lấy wallet theo userId - endpoint chính xác nhất
+      // Thử lấy wallet của current user - endpoint chính xác nhất
       try {
-        // Thử 1: GET /api/wallets/user/{userId} (endpoint chính từ walletService)
-        const walletData = await walletService.getWalletByUserId(userId);
+        // Thử 1: GET /api/wallets/my-wallet (endpoint recommended - uses current user from token)
+        const walletData = await walletService.getMyWallet();
         
         if (walletData && walletData.walletId) {
           const normalized = {
@@ -208,11 +208,11 @@ const WalletPage: React.FC = () => {
           return;
         }
       } catch (walletErr: any) {
-        // Nếu endpoint /api/wallets/user/{userId} trả về 404, thử endpoint balance
+        // Nếu endpoint /api/wallets/my-wallet trả về 404, thử endpoint balance
         if (walletErr?.response?.status === 404) {
           try {
-            // Thử 2: GET /api/wallets/balance/{userId} (fallback)
-            const balance = await walletService.getWalletBalance(userId);
+            // Thử 2: GET /api/wallets/balance (fallback - uses current user from token)
+            const balance = await walletService.getMyBalance();
             
             if (balance !== null && balance !== undefined) {
               // Có balance nhưng không có full wallet data

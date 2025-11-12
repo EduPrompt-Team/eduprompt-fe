@@ -26,6 +26,12 @@ class TemplateArchitectureService {
     await api.delete(`/api/template-architectures/${architectureId}`)
   }
 
+  // GET /api/template-architectures/{id}
+  async getById(id: number): Promise<TemplateArchitectureDto> {
+    const { data } = await api.get(`/api/template-architectures/${id}`)
+    return data
+  }
+
   // GET /api/template-architectures/instance/{InstanceId}
   async getByInstance(instanceId: number): Promise<TemplateArchitectureDto> {
     const { data } = await api.get(`/api/template-architectures/instance/${instanceId}`)

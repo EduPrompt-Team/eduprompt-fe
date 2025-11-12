@@ -52,10 +52,16 @@ class WalletService {
     return data
   }
 
-  // GET /api/wallets/balance/{UserId}
+  // GET /api/wallets/balance (recommended - uses current user from token)
+  async getMyBalance(): Promise<number> {
+    const { data } = await api.get('/api/wallets/balance')
+    return data.balance
+  }
+
+  // GET /api/wallets/balance/{UserId} (Admin only or own balance)
   async getWalletBalance(userId: number): Promise<number> {
     const { data } = await api.get(`/api/wallets/balance/${userId}`)
-    return data
+    return data.balance
   }
 
   // POST /api/wallets/deduct-funds
@@ -64,7 +70,13 @@ class WalletService {
     return data
   }
 
-  // GET /api/wallets/user/{UserId}
+  // GET /api/wallets/my-wallet (recommended - uses current user from token)
+  async getMyWallet(): Promise<Wallet> {
+    const { data } = await api.get('/api/wallets/my-wallet')
+    return data
+  }
+
+  // GET /api/wallets/user/{UserId} (Admin only or own wallet)
   async getWalletByUserId(userId: number): Promise<Wallet> {
     const { data } = await api.get(`/api/wallets/user/${userId}`)
     return data

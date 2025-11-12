@@ -727,11 +727,12 @@
 
 // export default PaymentPrompt
 import React from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { api, getCurrentUser } from '@/lib/api'
 import { walletService } from '@/services/walletService'
 import { transactionService } from '@/services/transactionService'
 import { paymentMethodService } from '@/services/paymentMethodService'
+import { paymentService } from '@/services/paymentService'
 import { TransactionStatus } from '@/types/status'
 import HeaderHomepage from '@/components/Layout/HeaderHomepage'
 import SiderBar from '@/components/ProfileUser/SiderBar'
@@ -746,6 +747,7 @@ interface Wallet {
 
 const PaymentPrompt: React.FC = () => {
     const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { showToast } = useToast()
   
@@ -754,6 +756,7 @@ const PaymentPrompt: React.FC = () => {
   const [amount, setAmount] = React.useState<string>('')
   const [desc, setDesc] = React.useState<string>('Nạp tiền ví EduPrompt')
   const [loading, setLoading] = React.useState(false)
+  const [vnpayLoading, setVnpayLoading] = React.useState(false)
   const [fetching, setFetching] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [selectedPackage, setSelectedPackage] = React.useState<{ packageId: number; packageName: string; price: number } | null>(null)
@@ -854,6 +857,74 @@ const PaymentPrompt: React.FC = () => {
     })()
   }, [])
 
+  // Handle VNPay return callback
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const responseCode = params.get('vnp_ResponseCode')
+    const amountParam = params.get('vnp_Amount')
+    const transactionNo = params.get('vnp_TransactionNo')
+    const txnRef = params.get('vnp_TxnRef')
+    
+    if (responseCode) {
+      ;(async () => {
+        try {
+          setVnpayLoading(true)
+          const currentUser = getCurrentUser() || JSON.parse(localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser') || '{}')
+          
+          if (responseCode === '00') {
+            const vnd = amountParam ? Number(amountParam) / 100 : 0
+            
+            // Refresh wallet để hiển thị số tiền mới
+            if (currentUser?.userId) {
+              try {
+                const walletData = await walletService.getWalletByUserId(Number(currentUser.userId))
+                if (walletData && walletData.walletId) {
+                  const newBalance = walletData.balance || 0
+                  setWallet({
+                    walletID: walletData.walletId,
+                    userID: walletData.userId || Number(currentUser.userId),
+                    balance: newBalance,
+                    currency: walletData.currency || 'VND',
+                  })
+                }
+              } catch (walletErr) {
+                console.error('Wallet refresh error:', walletErr)
+              }
+            }
+            
+            // Save success info
+            localStorage.setItem('vnpay_success', JSON.stringify({
+              amount: vnd,
+              transactionNo,
+              txnRef,
+              timestamp: new Date().toISOString(),
+            }))
+            
+            showToast(`✅ Nạp tiền thành công! Số tiền: ${vnd.toLocaleString('vi-VN')} VND`, 'success', 5000)
+            localStorage.removeItem('topupAmount')
+            localStorage.removeItem('selectedPackageForPayment')
+            
+            setTimeout(() => {
+              navigate('/wallet')
+            }, 2000)
+          } else {
+            setError(`Thanh toán thất bại. Mã lỗi: ${responseCode}`)
+            localStorage.setItem('vnpay_failed', JSON.stringify({
+              responseCode,
+              message: params.get('vnp_ResponseMessage') || 'Unknown error',
+              timestamp: new Date().toISOString(),
+            }))
+          }
+        } catch (e: any) {
+          console.error('VNPay callback error:', e)
+          setError('Xử lý kết quả thanh toán thất bại')
+        } finally {
+          setVnpayLoading(false)
+        }
+      })()
+    }
+  }, [location.search, navigate, showToast])
+
   // Update amount when changed and save to localStorage
   React.useEffect(() => {
     if (amount) {
@@ -886,21 +957,8 @@ const PaymentPrompt: React.FC = () => {
         return
       }
       
-      // Kiểm tra wallet có tồn tại không
-      if (!wallet || !wallet.walletID || wallet.walletID === 0) {
-        const shouldActivate = window.confirm(
-          'Bạn chưa có ví hoặc ví chưa được kích hoạt. Bạn có muốn đi đến trang "Ví của tôi" để kích hoạt ví không?'
-        )
-        if (shouldActivate) {
-          navigate('/wallet')
-          setLoading(false)
-          return
-        } else {
-          setError('Vui lòng kích hoạt ví trước khi nạp tiền. Hãy vào trang "Ví của tôi" để kích hoạt.')
-          setLoading(false)
-          return
-        }
-      }
+      // Test Mode chỉ cần userId, không cần walletId
+      // Nếu chưa có wallet, backend sẽ tự tạo khi gọi addFunds
       
       const amountNum = Number(amount)
       if (isNaN(amountNum) || amountNum <= 0) {
@@ -908,11 +966,25 @@ const PaymentPrompt: React.FC = () => {
       }
       
       // Lưu số dư cũ để so sánh
-      const oldBalance = wallet.balance || 0
+      const oldBalance = wallet?.balance || 0
       
-      // 1. Cộng tiền vào wallet trước
+      // 1. Đảm bảo wallet tồn tại trước khi add funds
+      let currentWallet
+      try {
+        currentWallet = await walletService.getMyWallet()
+      } catch (walletErr: any) {
+        // Nếu wallet chưa tồn tại, tạo wallet trước
+        if (walletErr?.response?.status === 404) {
+          console.log('Wallet not found, creating new wallet...')
+          currentWallet = await walletService.createWallet()
+        } else {
+          throw walletErr
+        }
+      }
+      
+      // 2. Cộng tiền vào wallet
       await walletService.addFunds({
-        userId: user.userId,
+        userId: Number(user.userId),
         amount: amountNum,
       })
       console.log('✅ Wallet funds added:', amountNum)
@@ -959,59 +1031,28 @@ const PaymentPrompt: React.FC = () => {
       // Sử dụng transactionReference hoặc description để lưu nội dung thanh toán
       let transactionId: number | null = null
       let transactionCreated = false
-      try {
-        const transaction = await transactionService.createTransaction({
-          paymentMethodId,
-          walletId: wallet.walletID,
-          amount: amountNum,
-          transactionType: 'TopUp', // Phải là "TopUp" theo backend, không phải "Deposit"
-          transactionReference: desc || `Nạp tiền ví EduPrompt - ${new Date().toISOString()}`, // Lưu nội dung thanh toán
-          description: desc || 'Nạp tiền ví EduPrompt', // Thêm description nếu backend hỗ trợ
-        })
-        
-        transactionId = transaction.transactionId || transaction.id || null
-        transactionCreated = true
-        console.log('✅ Transaction created with status Pending:', transaction, 'ID:', transactionId)
-        // KHÔNG update status ngay - giữ nguyên "Pending"
-      } catch (transErr: any) {
-        console.error('❌ Failed to create transaction:', transErr?.response?.status, transErr?.response?.data || transErr?.message)
-        
-        // Nếu lỗi do PaymentMethod không tồn tại, thử tạo PaymentMethod trước
-        if (transErr?.response?.status === 400 || transErr?.response?.status === 404) {
-          try {
-            console.log('⚠️ Attempting to create PaymentMethod...')
-            const newMethod = await paymentMethodService.createPaymentMethod({
-              methodName: 'Direct Payment',
-              provider: 'Internal',
-            })
-            
-            if (newMethod && newMethod.paymentMethodId) {
-              paymentMethodId = newMethod.paymentMethodId
-              console.log('✅ PaymentMethod created:', newMethod.paymentMethodId)
-              
-              // Thử tạo transaction lại với PaymentMethod mới
-              try {
-                const transaction = await transactionService.createTransaction({
-                  paymentMethodId,
-                  walletId: wallet.walletID,
-                  amount: amountNum,
-                  transactionType: 'TopUp',
-                  transactionReference: desc || `Nạp tiền ví EduPrompt - ${new Date().toISOString()}`,
-                  description: desc || 'Nạp tiền ví EduPrompt',
-                })
-                
-                transactionId = transaction.transactionId || transaction.id || null
-                transactionCreated = true
-                console.log('✅ Transaction created after creating PaymentMethod:', transaction, 'ID:', transactionId)
-                // KHÔNG update status ngay - giữ nguyên "Pending"
-              } catch (retryErr: any) {
-                console.error('❌ Still failed to create transaction:', retryErr?.response?.status, retryErr?.response?.data || retryErr?.message)
-              }
-            }
-          } catch (createMethodErr: any) {
-            console.error('❌ Failed to create PaymentMethod:', createMethodErr?.response?.status, createMethodErr?.response?.data || createMethodErr?.message)
-          }
+      
+      // Chỉ tạo transaction nếu có walletId
+      if (wallet && wallet.walletID && wallet.walletID > 0) {
+        try {
+          const transaction = await transactionService.createTransaction({
+            paymentMethodId,
+            walletId: wallet.walletID,
+            amount: amountNum,
+            transactionType: 'TopUp', // Phải là "TopUp" theo backend, không phải "Deposit"
+            transactionReference: desc || `Nạp tiền ví EduPrompt - ${new Date().toISOString()}`, // Lưu nội dung thanh toán
+            description: desc || 'Nạp tiền ví EduPrompt', // Thêm description nếu backend hỗ trợ
+          })
+          
+          transactionId = transaction.transactionId || transaction.id || null
+          transactionCreated = true
+          console.log('✅ Transaction created with status Pending:', transaction, 'ID:', transactionId)
+        } catch (transErr: any) {
+          console.warn('⚠️ Could not create transaction (wallet may not exist yet):', transErr?.response?.status || transErr?.message)
+          // Tiếp tục dù không tạo được transaction - backend có thể tự tạo wallet
         }
+      } else {
+        console.log('⚠️ No walletId, skipping transaction creation. Wallet will be created by backend if needed.')
       }
       
       if (!transactionCreated) {
@@ -1074,6 +1115,21 @@ const PaymentPrompt: React.FC = () => {
         }, 500) // Đợi 500ms sau khi toast được hiển thị
       }
       
+      // Refresh wallet để lấy walletId mới nếu backend đã tạo wallet
+      try {
+        const walletData = await walletService.getWalletByUserId(Number(user.userId))
+        if (walletData && walletData.walletId) {
+          setWallet({
+            walletID: walletData.walletId,
+            userID: walletData.userId || user.userId,
+            balance: walletData.balance || 0,
+            currency: walletData.currency || 'VND',
+          })
+        }
+      } catch (walletErr) {
+        console.warn('Could not refresh wallet:', walletErr)
+      }
+      
       // 7. Lưu thông tin thành công
       localStorage.setItem('payment_test_success', JSON.stringify({
         amount: amountNum,
@@ -1110,6 +1166,81 @@ const PaymentPrompt: React.FC = () => {
     }
   }
 
+  const handleVnpayPayment = async (bankCode?: string) => {
+    try {
+      setVnpayLoading(true)
+      setError(null)
+      setSuccess(false)
+      
+      // Validation
+      if (!amount || Number(amount) <= 0) {
+        setError('Vui lòng nhập số tiền hợp lệ (tối thiểu 1,000 VND)')
+        setVnpayLoading(false)
+        return
+      }
+      
+      if (Number(amount) < 1000) {
+        setError('Số tiền tối thiểu là 1,000 VND')
+        setVnpayLoading(false)
+        return
+      }
+      
+      if (!user?.userId) {
+        setError('Vui lòng đăng nhập để thanh toán')
+        setVnpayLoading(false)
+        return
+      }
+      
+      // Kiểm tra wallet có tồn tại không
+      if (!wallet || !wallet.walletID || wallet.walletID === 0) {
+        const shouldActivate = window.confirm(
+          'Bạn chưa có ví hoặc ví chưa được kích hoạt. Bạn có muốn đi đến trang "Ví của tôi" để kích hoạt ví không?'
+        )
+        if (shouldActivate) {
+          navigate('/wallet')
+          setVnpayLoading(false)
+          return
+        } else {
+          setError('Vui lòng kích hoạt ví trước khi nạp tiền. Hãy vào trang "Ví của tôi" để kích hoạt.')
+          setVnpayLoading(false)
+          return
+        }
+      }
+      
+      const amountNum = Number(amount)
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Số tiền không hợp lệ.')
+      }
+      
+      const returnUrl = `${window.location.origin}/wallet/topup`
+      
+      // Gọi API để tạo VNPay URL với bankCode (nếu có)
+      // bankCode: "VNPAYQR" để hiển thị QR code, "VNBANK" cho ATM, "INTCARD" cho thẻ quốc tế
+      const paymentUrl = await paymentService.topupWalletWithVnpay(wallet.walletID, {
+        amount: amountNum,
+        language: 'vn',
+        returnUrl,
+        bankCode, // Thêm bankCode để chọn phương thức thanh toán
+      })
+      
+      console.log('VNPay URL created with bankCode:', bankCode || 'default')
+      
+      if (paymentUrl) {
+        // Redirect to VNPay
+        window.location.href = paymentUrl
+      } else {
+        throw new Error('Không nhận được payment URL từ server')
+      }
+    } catch (e: any) {
+      console.error('VNPay create error:', e)
+      const errorMsg = e?.response?.data?.message || e?.message || 'Không tạo được link thanh toán VNPay'
+      setError(errorMsg)
+      showToast(errorMsg, 'error', 5000)
+    } finally {
+      setVnpayLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <HeaderHomepage />
@@ -1119,17 +1250,19 @@ const PaymentPrompt: React.FC = () => {
           {/* Header with line */}
       <div className="px-10 pt-6 md:pt-10">
         <div className="max-w-5xl mx-auto text-center">
-              <h1 className="text-2xl md:text-3xl font-bold">Nạp tiền (Test Mode)</h1>
-              <p className="text-neutral-400 mt-1">Thanh toán trực tiếp không qua VNPay</p>
+              <h1 className="text-2xl md:text-3xl font-bold">Nạp tiền vào ví</h1>
+              <p className="text-neutral-400 mt-1">Chọn phương thức thanh toán phù hợp</p>
         </div>
             <div className="mt-4 h-0.5 -mx-10 bg-white/10"></div>
       </div>
 
       <div className="max-w-5xl mx-auto p-6 md:p-10 pt-6">
-            {fetching ? (
+            {fetching || vnpayLoading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500 mx-auto"></div>
-                <p className="mt-4 text-neutral-400">Đang tải thông tin...</p>
+                <p className="mt-4 text-neutral-400">
+                  {vnpayLoading ? 'Đang xử lý thanh toán VNPay...' : 'Đang tải thông tin...'}
+                </p>
               </div>
             ) : (
               <>
@@ -1183,8 +1316,8 @@ const PaymentPrompt: React.FC = () => {
              <div className="absolute inset-0 rounded-2xl bg-[conic-gradient(at_50%_90%,#ff3d3d_0%,#ffbf00_20%,#00ff80_40%,#00c3ff_60%,#8a2be2_80%,#ff3d3d_100%)] opacity-60"></div>
              <div className="relative z-10 rounded-[14px] border border-[#2f2f4a] bg-[#1a1a2d] p-6">
               <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">Thanh toán trực tiếp</h2>
-                        <span className="text-xs text-yellow-400 bg-yellow-400/20 px-2 py-1 rounded">TEST MODE</span>
+                        <h2 className="text-lg font-semibold">Phương thức thanh toán</h2>
+                        <span className="text-xs text-neutral-400">Chọn một phương thức</span>
               </div>
 
               {/* Inputs */}
@@ -1214,10 +1347,92 @@ const PaymentPrompt: React.FC = () => {
               </div>
 
               {/* Actions */}
-                      <div className="mt-5">
+                      <div className="mt-5 space-y-3">
+                        {/* VNPay Options */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-neutral-400 mb-2">Chọn phương thức thanh toán VNPay:</p>
+                          
+                          {/* VNPay QR Code */}
+                          <button 
+                            onClick={() => handleVnpayPayment('VNPAYQR')} 
+                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
+                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {vnpayLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Đang tạo link thanh toán...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>📱</span>
+                                <span>Thanh toán bằng QR Code</span>
+                              </>
+                            )}
+                          </button>
+                          
+                          {/* VNPay Default */}
+                          <button 
+                            onClick={() => handleVnpayPayment()} 
+                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
+                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {vnpayLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Đang tạo link thanh toán...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>💳</span>
+                                <span>Thanh toán VNPay (Mặc định)</span>
+                              </>
+                            )}
+                          </button>
+                          
+                          {/* VNPay ATM */}
+                          <button 
+                            onClick={() => handleVnpayPayment('VNBANK')} 
+                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
+                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {vnpayLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Đang tạo link thanh toán...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>🏦</span>
+                                <span>Thẻ nội địa (ATM)</span>
+                              </>
+                            )}
+                          </button>
+                          
+                          {/* VNPay International Card */}
+                          <button 
+                            onClick={() => handleVnpayPayment('INTCARD')} 
+                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
+                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-500 hover:to-red-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {vnpayLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Đang tạo link thanh toán...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>🌍</span>
+                                <span>Thẻ quốc tế (VISA/Mastercard)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        
+                        {/* Test Mode Button */}
                         <button 
                           onClick={handlePayment} 
-                          disabled={loading || !amount || Number(amount) < 1000 || success} 
+                          disabled={loading || vnpayLoading || !amount || Number(amount) < 1000 || success} 
                           className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {loading ? (
@@ -1231,22 +1446,39 @@ const PaymentPrompt: React.FC = () => {
                               <span>Thanh toán thành công!</span>
                             </>
                           ) : (
-                            'Thanh toán ngay'
+                            <>
+                              <span>⚡</span>
+                              <span>Thanh toán nhanh (Test Mode)</span>
+                            </>
                           )}
-                </button>
+                        </button>
               </div>
 
                       {/* Info */}
-                      <div className="mt-5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-                        <div className="text-xs text-yellow-300 mb-2">⚠️ Chế độ Test</div>
-                        <p className="text-xs text-yellow-200/80">
-                          Thanh toán sẽ được xử lý ngay lập tức:
-                        </p>
-                        <ul className="text-xs text-yellow-200/80 mt-2 space-y-1 list-disc list-inside">
-                          <li>Tiền sẽ được cộng vào ví ngay</li>
-                          <li>Transaction (TopUp) sẽ được tạo với status "Completed"</li>
-                          <li>Lịch sử giao dịch sẽ hiển thị sau khi refresh</li>
-                        </ul>
+                      <div className="mt-5 space-y-3">
+                        <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+                          <div className="text-xs text-blue-300 mb-2">💳 VNPay</div>
+                          <p className="text-xs text-blue-200/80">
+                            Thanh toán an toàn qua VNPay:
+                          </p>
+                          <ul className="text-xs text-blue-200/80 mt-2 space-y-1 list-disc list-inside">
+                            <li>Hỗ trợ thẻ ATM, thẻ quốc tế, QR Code</li>
+                            <li>Thanh toán được xử lý tự động sau khi hoàn tất</li>
+                            <li>Bảo mật cao, được VNPay bảo vệ</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+                          <div className="text-xs text-yellow-300 mb-2">⚡ Test Mode</div>
+                          <p className="text-xs text-yellow-200/80">
+                            Thanh toán sẽ được xử lý ngay lập tức (chỉ dùng để test):
+                          </p>
+                          <ul className="text-xs text-yellow-200/80 mt-2 space-y-1 list-disc list-inside">
+                            <li>Tiền sẽ được cộng vào ví ngay</li>
+                            <li>Transaction (TopUp) sẽ được tạo với status "Completed"</li>
+                            <li>Lịch sử giao dịch sẽ hiển thị sau khi refresh</li>
+                          </ul>
+                        </div>
                       </div>
                       
                       {/* Wallet Info */}
