@@ -599,7 +599,8 @@ const DashboardAdmin: React.FC = () => {
                                                     displayCreatedAt = date.toLocaleDateString('vi-VN', {
                                                         year: 'numeric',
                                                         month: '2-digit',
-                                                        day: '2-digit'
+                                                        day: '2-digit',
+                                                        timeZone: 'Asia/Ho_Chi_Minh'
                                                     });
                                                 }
                                             } catch (dateErr) {
@@ -1633,7 +1634,12 @@ const DashboardAdmin: React.FC = () => {
                                                                     </div>
                                                                     <div className="flex items-center gap-3">
                                                                         <span className="text-sm text-neutral-300">
-                                                                            {new Date(order.orderDate).toLocaleDateString('vi-VN')}
+                                                                            {new Date(order.orderDate).toLocaleDateString('vi-VN', {
+                                                                              year: 'numeric',
+                                                                              month: 'short',
+                                                                              day: 'numeric',
+                                                                              timeZone: 'Asia/Ho_Chi_Minh'
+                                                                            })}
                                                                         </span>
                                                                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                                                                             order.status === 'Completed' || order.status === 'Paid' 

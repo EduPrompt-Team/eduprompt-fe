@@ -112,7 +112,12 @@ const DynamicSubjectChaptersPage: React.FC = () => {
                       <div className="text-sm text-neutral-300 grid grid-cols-2 gap-x-4 gap-y-1">
                         <div className="opacity-80">Khối</div><div className="text-right font-medium">{grade}</div>
                         <div className="opacity-80">Môn</div><div className="text-right font-medium">{subjectVi}</div>
-                        {ch.latest && (<><div className="opacity-80">Cập nhật</div><div className="text-right font-medium">{new Date(ch.latest).toLocaleDateString('vi-VN')}</div></>)}
+                        {ch.latest && (<><div className="opacity-80">Cập nhật</div><div className="text-right font-medium">{new Date(ch.latest).toLocaleDateString('vi-VN', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          timeZone: 'Asia/Ho_Chi_Minh'
+                        })}</div></>)}
                       </div>
                       <div className="pt-2">
                         <span className="inline-block text-[13px] text-neutral-400">Nhấn để xem chi tiết</span>

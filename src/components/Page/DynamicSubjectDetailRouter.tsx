@@ -699,7 +699,12 @@ export default function DynamicSubjectDetailRouter() {
 
               {/* Timestamp */}
               <p className="text-xs text-neutral-500">
-                Đã thêm {selectedPrompt.createdAt ? new Date(selectedPrompt.createdAt).toLocaleDateString('vi-VN') : 'gần đây'}
+                Đã thêm {selectedPrompt.createdAt ? new Date(selectedPrompt.createdAt).toLocaleDateString('vi-VN', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'Asia/Ho_Chi_Minh'
+                }) : 'gần đây'}
               </p>
 
               {/* Related App */}

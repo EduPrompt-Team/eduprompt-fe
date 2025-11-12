@@ -1027,7 +1027,7 @@ const PaymentPrompt: React.FC = () => {
       }
       
       // 3. Tạo Transaction với TransactionType = "TopUp" (theo backend)
-      // Status mặc định sẽ là "Pending" - không update ngay
+      // Status = "Completed" vì đây là test mode, thanh toán thành công ngay
       // Sử dụng transactionReference hoặc description để lưu nội dung thanh toán
       let transactionId: number | null = null
       let transactionCreated = false
@@ -1040,13 +1040,14 @@ const PaymentPrompt: React.FC = () => {
             walletId: wallet.walletID,
             amount: amountNum,
             transactionType: 'TopUp', // Phải là "TopUp" theo backend, không phải "Deposit"
+            status: 'Completed', // Test mode: thanh toán thành công ngay
             transactionReference: desc || `Nạp tiền ví EduPrompt - ${new Date().toISOString()}`, // Lưu nội dung thanh toán
             description: desc || 'Nạp tiền ví EduPrompt', // Thêm description nếu backend hỗ trợ
           })
           
           transactionId = transaction.transactionId || transaction.id || null
           transactionCreated = true
-          console.log('✅ Transaction created with status Pending:', transaction, 'ID:', transactionId)
+          console.log('✅ Transaction created with status Completed:', transaction, 'ID:', transactionId)
         } catch (transErr: any) {
           console.warn('⚠️ Could not create transaction (wallet may not exist yet):', transErr?.response?.status || transErr?.message)
           // Tiếp tục dù không tạo được transaction - backend có thể tự tạo wallet
@@ -1089,31 +1090,14 @@ const PaymentPrompt: React.FC = () => {
         }))
       }
       
-      // 5. Hiển thị thông báo thành công với status "Đang xử lý" (Pending)
+      // 5. Hiển thị thông báo thành công
       setSuccess(true)
       const successMessage = `Nạp tiền vào ví thành công!\n\n` +
         `Số tiền: ${amountNum.toLocaleString('vi-VN')} VND\n` +
         `Số dư ví: ${finalBalance.toLocaleString('vi-VN')} VND\n\n` +
-        `Transaction Status: ${transactionCreated ? 'Đang xử lý (Pending)' : 'Chưa tạo (kiểm tra backend)'}`
+        `Transaction Status: ${transactionCreated ? 'Thành công (Completed)' : 'Chưa tạo (kiểm tra backend)'}`
       
       showToast(successMessage, 'success', 5000)
-      
-      // 6. Update transaction status thành "Completed" SAU KHI đã hiển thị toast
-      // Chạy sau khi toast được hiển thị (async, không block UI)
-      if (transactionId && transactionCreated) {
-        // Đợi một chút để đảm bảo toast đã được hiển thị
-        setTimeout(async () => {
-          try {
-            await transactionService.updateTransaction(transactionId!, {
-              status: TransactionStatus.Completed, // "Completed"
-            })
-            console.log('✅ Transaction status updated to Completed after showing toast')
-          } catch (updateErr: any) {
-            console.warn('⚠️ Could not update transaction status:', updateErr?.response?.status || updateErr?.message)
-            // Tiếp tục dù có lỗi update status
-          }
-        }, 500) // Đợi 500ms sau khi toast được hiển thị
-      }
       
       // Refresh wallet để lấy walletId mới nếu backend đã tạo wallet
       try {
