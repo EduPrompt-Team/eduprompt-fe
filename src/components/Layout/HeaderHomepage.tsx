@@ -1,6 +1,6 @@
 import React from 'react'
 import { getCurrentUser, fetchCurrentUser, clearTokens, setCurrentUser } from '@/lib/api'
-import { User, ShoppingBag, Heart, ChevronDown, Shield, Wallet, Package } from 'lucide-react'
+import { User, ShoppingBag, Heart, ChevronDown, Shield, Wallet, Package, FileText } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { checkIsAdmin } from '@/utils/auth'
 
@@ -221,6 +221,10 @@ const HeaderHomepage: React.FC = () => {
               <button onClick={() => { setMenuOpen(false); navigate('/my-packages') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
                 <Package className="h-5 w-5" />
                 <span>Quản lý gói</span>
+              </button>
+              <button onClick={() => { setMenuOpen(false); navigate('/my-templates') }} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-200 hover:bg-[#2c2c48]">
+                <FileText className="h-5 w-5" />
+                <span>Quản lý Template</span>
               </button>
               
               {/* Admin Dashboard - Only visible to Admin users */}

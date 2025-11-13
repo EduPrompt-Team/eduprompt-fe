@@ -75,6 +75,29 @@ export const paymentService = {
   refund(dto: VnpayRefundDto) {
     return api.post(`/api/payments/refund`, dto);
   },
+
+  // Check payment status for a package (NEW) ⭐
+  async checkPackagePayment(packageId: number): Promise<{
+    packageId: number;
+    isPaid: boolean;
+    orderId?: number;
+    paymentId?: number;
+    paidAt?: string;
+    amount?: number;
+    paymentMethod?: string;
+    status?: string;
+  }> {
+    try {
+      const { data } = await api.get(`/api/payments/check-package/${packageId}`);
+      return data;
+    } catch (e: any) {
+      // Nếu endpoint chưa có (404) hoặc lỗi khác, throw để caller xử lý fallback
+      if (e?.response?.status === 404) {
+        throw new Error('ENDPOINT_NOT_FOUND');
+      }
+      throw e;
+    }
+  },
 };
 
 

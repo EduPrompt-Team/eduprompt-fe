@@ -161,38 +161,6 @@ const ShoppingSection: React.FC = () => {
       </div>
     );
   }
-
-  return (
-    <div className="py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Packages</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Discover our comprehensive learning packages designed to enhance your educational journey.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {packages.map((pkg) => (
-            <PackageCard key={pkg.packageID} package={pkg} />
-          ))}
-        </div>
-
-        <div className="text-center">
-          <Link to="/cart">
-            <Button className="bg-blue-600 hover:bg-blue-700 mr-4">
-              View Cart
-            </Button>
-          </Link>
-          <Link to="/wallet">
-            <Button variant="outline">
-              My Wallet
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default ShoppingSection;

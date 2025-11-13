@@ -222,18 +222,7 @@ const PromptGrade10MathDetailChuong2: React.FC = () => {
             </p>
 
             {/* Related App */}
-            <div className="bg-[#23233a] rounded-lg p-4 border border-[#2a2a44]">
-              <div className="flex items-center space-x-3">
-                <div 
-                  className="w-12 h-12 bg-cover bg-center rounded"
-                  style={{ backgroundImage: `url(${selectedPrompt.image})` }}
-                ></div>
-                <div>
-                  <h3 className="font-semibold text-sm">{selectedPrompt.title} Generator</h3>
-                  <p className="text-xs text-neutral-400">Ứng dụng liên quan</p>
-                </div>
-              </div>
-            </div>
+          
           </div>
         </div>
 

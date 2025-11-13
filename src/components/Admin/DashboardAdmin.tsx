@@ -1398,8 +1398,8 @@ const DashboardAdmin: React.FC = () => {
                     <div className="mb-4">
                         {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Đánh giá</div>}
                         <SidebarButton 
-                            active={activeView === 'manageReviews' || activeView === 'reviews'} 
-                            onClick={() => setActiveView('manageReviews')}
+                            active={activeView === 'reviews' || activeView === 'manageReviews'} 
+                            onClick={() => setActiveView('reviews')}
                         >
                             <div className="flex items-center gap-3">
                                 <MessageSquare className="w-4 h-4 flex-shrink-0" />

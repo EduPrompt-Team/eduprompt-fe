@@ -26,6 +26,11 @@ import MyPackagesPage from '@/components/Page/MyPackagesPage'
 import Grade10SubjectDetailRouter from '../components/Page/Grade10SubjectDetailRouter'
 import DynamicSubjectDetailRouter from '@/components/Page/DynamicSubjectDetailRouter'
 import DynamicSubjectChaptersPage from '@/components/Page/DynamicSubjectChaptersPage'
+import DynamicTemplateFormPage from '@/components/Page/DynamicTemplateFormPage'
+import DynamicChatPage from '@/components/Page/DynamicChatPage'
+import ChatHistoryPage from '@/components/Page/ChatHistoryPage'
+import CreateTemplatePage from '@/components/Page/CreateTemplatePage'
+import MyTemplatesPage from '@/components/Page/MyTemplatesPage'
 import NonAdminOnlyRoute from '@/components/Admin/NonAdminOnlyRoute'
 
 export const router = createBrowserRouter([
@@ -53,11 +58,23 @@ export const router = createBrowserRouter([
 	// Avoid Vite's internal /package (serves package.json as ESM); use /packages instead
 	{ path: '/packages', element: (<NonAdminOnlyRoute><PackagePage /></NonAdminOnlyRoute>) },
 	{ path: '/my-packages', element: (<NonAdminOnlyRoute><MyPackagesPage /></NonAdminOnlyRoute>) },
+	{ path: '/Sell', element: (<NonAdminOnlyRoute><CreateTemplatePage /></NonAdminOnlyRoute>) },
+	{ path: '/my-templates', element: (<NonAdminOnlyRoute><MyTemplatesPage /></NonAdminOnlyRoute>) },
 	// Grade 10 subject dynamic chapter route (backward compatibility for math)
 	{ path: '/grade10/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><Grade10SubjectDetailRouter /></NonAdminOnlyRoute>) },
+	// Grade 10 form and chat routes
+	{ path: '/grade10/:subject/detail/:chapter/form', element: (<NonAdminOnlyRoute><DynamicTemplateFormPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade10/:subject/detail/:chapter/chat', element: (<NonAdminOnlyRoute><DynamicChatPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade10/:subject/detail/:chapter/chat-history', element: (<NonAdminOnlyRoute><ChatHistoryPage /></NonAdminOnlyRoute>) },
 // Backward-compatibility: allow /grade11/:subject/detail/:chapter and /grade12/:subject/detail/:chapter
 { path: '/grade11/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
+	{ path: '/grade11/:subject/detail/:chapter/form', element: (<NonAdminOnlyRoute><DynamicTemplateFormPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade11/:subject/detail/:chapter/chat', element: (<NonAdminOnlyRoute><DynamicChatPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade11/:subject/detail/:chapter/chat-history', element: (<NonAdminOnlyRoute><ChatHistoryPage /></NonAdminOnlyRoute>) },
 { path: '/grade12/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
+	{ path: '/grade12/:subject/detail/:chapter/form', element: (<NonAdminOnlyRoute><DynamicTemplateFormPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade12/:subject/detail/:chapter/chat', element: (<NonAdminOnlyRoute><DynamicChatPage /></NonAdminOnlyRoute>) },
+	{ path: '/grade12/:subject/detail/:chapter/chat-history', element: (<NonAdminOnlyRoute><ChatHistoryPage /></NonAdminOnlyRoute>) },
 // Intermediate chapters page for a subject within a grade
 { path: '/grade/:grade/:subject', element: (<NonAdminOnlyRoute><DynamicSubjectChaptersPage /></NonAdminOnlyRoute>) },
 // Backward-compatibility: chapters listing without /grade/ prefix
@@ -65,6 +82,12 @@ export const router = createBrowserRouter([
 { path: '/grade12/:subject', element: (<NonAdminOnlyRoute><DynamicSubjectChaptersPage /></NonAdminOnlyRoute>) },
 // Dynamic routes for all grades and subjects (10, 11, 12)
 	{ path: '/grade/:grade/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><DynamicSubjectDetailRouter /></NonAdminOnlyRoute>) },
+	// Dynamic template form page (form để điền thông tin trước khi vào chat)
+	{ path: '/grade/:grade/:subject/detail/:chapter/form', element: (<NonAdminOnlyRoute><DynamicTemplateFormPage /></NonAdminOnlyRoute>) },
+	// Dynamic chat page (chat với AI để tạo prompt)
+	{ path: '/grade/:grade/:subject/detail/:chapter/chat', element: (<NonAdminOnlyRoute><DynamicChatPage /></NonAdminOnlyRoute>) },
+	// Chat history page (xem tất cả lịch sử chat của template)
+	{ path: '/grade/:grade/:subject/detail/:chapter/chat-history', element: (<NonAdminOnlyRoute><ChatHistoryPage /></NonAdminOnlyRoute>) },
 	// Admin Dashboard - Protected by role
 	{ 
 		path: '/admin/dashboard', 

@@ -1,9 +1,9 @@
 import { api } from '@/lib/api'
-import type { PromptInstanceDto, PromptInstanceDetailDto } from '@/types/dto/prompt'
+import type { PromptInstanceDto, PromptInstanceDetailDto, CreatePromptInstanceDto } from '@/types/dto/prompt'
 
 class PromptInstanceService {
   // POST /api/prompt-instances
-  async create(payload: Omit<PromptInstanceDto, 'instanceId' | 'executedAt'>): Promise<PromptInstanceDto> {
+  async create(payload: CreatePromptInstanceDto): Promise<PromptInstanceDto> {
     const { data } = await api.post('/api/prompt-instances', payload)
     return data
   }
@@ -43,8 +43,25 @@ class PromptInstanceService {
   }
 
   // GET /api/prompt-instances/template/{templateId}
+  // Note: templateId refers to PackageId (not storageId)
   async getByTemplate(templateId: number): Promise<PromptInstanceDto[]> {
     const { data } = await api.get(`/api/prompt-instances/template/${templateId}`)
+    return data
+  }
+
+  // GET /api/prompt-instances/storage/{storageId}
+  // Get instances by StorageTemplate ID (storageId) - Returns ALL instances (not filtered by UserId)
+  // Note: For user-specific instances, use getMyInstancesByStorageId() instead
+  async getByStorageId(storageId: number): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/storage/${storageId}`)
+    return data
+  }
+
+  // GET /api/prompt-instances/storage/{storageId}/my
+  // NEW: Get instances by StorageTemplate ID (storageId) for current authenticated user
+  // Returns only instances of the current user (filtered by UserId from JWT token)
+  async getMyInstancesByStorageId(storageId: number): Promise<PromptInstanceDto[]> {
+    const { data } = await api.get(`/api/prompt-instances/storage/${storageId}/my`)
     return data
   }
 

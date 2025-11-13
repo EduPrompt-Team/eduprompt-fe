@@ -71,15 +71,13 @@ const CreateTemplateArchitecturePage: React.FC = () => {
         return
       }
 
-      const configuration = JSON.stringify({ fields })
+      const configurationJson = JSON.stringify({ fields })
 
       await templateArchitectureService.create({
         storageId,
         architectureName,
         architectureType,
-        description,
-        configuration,
-        status: 'Active'
+        configurationJson
       })
 
       navigate('/admin/dashboard')

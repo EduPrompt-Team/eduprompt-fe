@@ -168,107 +168,70 @@ const WalletPage: React.FC = () => {
 
   const fetchWalletData = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Get current user
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser') || '{}');
-      
+      setLoading(true)
+      setError(null)
+
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser') || '{}')
+
       if (!currentUser.userId) {
-        // Use mock data if no user
-        setWallet(mockData.mockWallet);
-        setTransactions([mockData.mockTransaction]);
-        setNeedsActivation(false);
-        return;
+        setWallet(mockData.mockWallet)
+        setTransactions([mockData.mockTransaction])
+        setNeedsActivation(false)
+        return
       }
 
-      const userId = Number(currentUser.userId);
-      
-      // Thử lấy wallet của current user - endpoint chính xác nhất
+      const userId = Number(currentUser.userId)
+
       try {
-        // Thử 1: GET /api/wallets/my-wallet (endpoint recommended - uses current user from token)
-        const walletData = await walletService.getMyWallet();
-        
-        if (walletData && walletData.walletId) {
-          const normalized = {
-            walletID: walletData.walletId,
-            userID: walletData.userId || userId,
-            balance: walletData.balance || 0,
-            currency: walletData.currency || 'VND',
-            createdDate: walletData.createdDate || new Date().toISOString(),
-            updatedDate: walletData.updatedDate || undefined,
-            status: walletData.status || 'Active',
-          } as Wallet;
-          
-          setWallet(normalized);
-          setNeedsActivation(false);
-          
-          // Fetch transactions nếu có walletId hợp lệ
-          await fetchTransactions(normalized.walletID);
-          return;
+        const walletData = await walletService.getWalletByUserId(userId)
+        if (walletData && (walletData.walletId || walletData.walletID)) {
+          const normalized: Wallet = {
+            walletID: walletData.walletId ?? walletData.walletID ?? 0,
+            userID: walletData.userId ?? walletData.userID ?? userId,
+            balance: walletData.balance ?? 0,
+            currency: walletData.currency ?? 'VND',
+            createdDate: walletData.createdDate ?? new Date().toISOString(),
+            updatedDate: walletData.updatedDate,
+            status: walletData.status ?? 'Active',
+          }
+
+          setWallet(normalized)
+          setNeedsActivation(false)
+
+          if (normalized.walletID > 0) {
+            await fetchTransactions(normalized.walletID)
+          } else {
+            setTransactions([])
+          }
+          return
         }
       } catch (walletErr: any) {
-        // Nếu endpoint /api/wallets/my-wallet trả về 404, thử endpoint balance
-        if (walletErr?.response?.status === 404) {
-          try {
-            // Thử 2: GET /api/wallets/balance (fallback - uses current user from token)
-            const balance = await walletService.getMyBalance();
-            
-            if (balance !== null && balance !== undefined) {
-              // Có balance nhưng không có full wallet data
-              // Thử tạo wallet hoặc lấy từ API khác
-              const normalized = {
-                walletID: 0, // Chưa có walletId từ balance endpoint
-                userID: userId,
-                balance: Number(balance) || 0,
-                currency: 'VND',
-                createdDate: new Date().toISOString(),
-                updatedDate: undefined,
-                status: 'Active',
-              } as Wallet;
-              
-              setWallet(normalized);
-              setNeedsActivation(false);
-              setTransactions([]); // Không fetch được transactions nếu walletID = 0
-              return;
-            }
-          } catch (balanceErr: any) {
-            // Nếu cả hai endpoint đều fail với 404, user chưa có wallet
-            if (balanceErr?.response?.status === 404 || balanceErr?.response?.status === 400) {
-              setNeedsActivation(true);
-              setWallet(null);
-              setTransactions([]);
-              return;
-            }
-            // Nếu lỗi khác, log warning nhưng không spam console
-            console.warn('Wallet balance fetch failed:', balanceErr?.response?.status || balanceErr?.message);
-          }
-        } else {
-          // Lỗi khác 404, log warning nhưng không spam
-          console.warn('Wallet fetch error:', walletErr?.response?.status || walletErr?.message);
+        const status = walletErr?.response?.status
+        if (status === 404 || status === 400) {
+          setNeedsActivation(true)
+          setWallet(null)
+          setTransactions([])
+          return
         }
+        console.warn('Wallet fetch error:', status || walletErr?.message)
       }
-      
-      // Nếu tất cả đều fail, yêu cầu kích hoạt ví
-      setNeedsActivation(true);
-      setWallet(null);
-      setTransactions([]);
-      
+
+      setNeedsActivation(true)
+      setWallet(null)
+      setTransactions([])
     } catch (err: any) {
-      // Chỉ log lỗi không mong đợi
       if (err?.response?.status !== 404 && err?.response?.status !== 400) {
-        console.error('Wallet data fetch error:', err);
-        setError('Không thể tải thông tin ví. Vui lòng thử lại sau.');
+        console.error('Wallet data fetch error:', err)
+        setError('Không thể tải thông tin ví. Vui lòng thử lại sau.')
       } else {
-        // 404/400 là expected khi chưa có wallet
-        setNeedsActivation(true);
-        setWallet(null);
-        setTransactions([]);
+        setNeedsActivation(true)
+        setWallet(null)
+        setTransactions([])
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // Kích hoạt ví
   const createWallet = async (userId: number) => {
@@ -293,11 +256,17 @@ const WalletPage: React.FC = () => {
       // Refresh data để lấy đầy đủ thông tin (bao gồm transactions)
       await fetchWalletData();
     } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.message || 'Không thể tạo ví. Vui lòng thử lại.';
-      setError(errorMsg);
-      console.error('Create wallet error:', err);
+      if (err?.response?.status === 400) {
+        // Có thể ví đã tồn tại – thử fetch lại
+        await fetchWalletData()
+        setError(null)
+        return
+      }
+      const errorMsg = err?.response?.data?.message || err?.message || 'Không thể tạo ví. Vui lòng thử lại.'
+      setError(errorMsg)
+      console.error('Create wallet error:', err)
     } finally {
-      setActivating(false);
+      setActivating(false)
     }
   };
 

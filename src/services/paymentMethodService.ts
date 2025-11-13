@@ -69,6 +69,15 @@ class PaymentMethodService {
     const { data } = await api.get(`/api/payment-methods/user/${userId}/default`)
     return data
   }
+
+  // GET /api/payment-methods/public - Get active payment methods (NEW) ⭐
+  // NOTE: Endpoint này chưa sẵn sàng, backend trả về 400 vì hiểu nhầm "public" là ID
+  // Tạm thời return empty array để dùng default paymentMethodId = 1
+  async getActivePaymentMethods(): Promise<PaymentMethod[]> {
+    // Endpoint chưa sẵn sàng, không gọi để tránh lỗi 400
+    console.warn('[PaymentMethodService] Public endpoint not available yet, using default paymentMethodId = 1')
+    return []
+  }
 }
 
 export const paymentMethodService = new PaymentMethodService()

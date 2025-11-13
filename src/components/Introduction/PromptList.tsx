@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 const PromptList: React.FC = () => {
   const navigate = useNavigate()
 
-  const handleLogin = () => {
-    navigate('/login')
+  const handleBuyPackages = () => {
+    navigate('/packages')
   }
 
   const handleGrade10 = () => {
@@ -115,17 +115,17 @@ const PromptList: React.FC = () => {
         <div className="text-center mt-16">
           <div className="bg-gradient-to-r from-[#23233a] to-[#2a2a44] rounded-2xl p-8 border border-[#3a3a54]">
             <h3 className="text-3xl font-bold text-white mb-4">
-              Sẵn sàng bắt đầu?
+              Mua gói để trải nghiệm thôi nào !
             </h3>
             <p className="text-neutral-400 mb-8 max-w-2xl mx-auto">
               Tham gia cộng đồng giáo viên sử dụng AI để nâng cao chất lượng giảng dạy
             </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button 
-                  onClick={handleLogin}
+                  onClick={handleBuyPackages}
                   className="px-8 py-4 bg-gradient-to-r from-rose-400 to-orange-400 text-white font-semibold rounded-xl hover:from-rose-500 hover:to-orange-500 transition-all duration-300 hover:scale-105 active:scale-95"
                 >
-                  Đăng nhập
+                  Mua gói Prompt
                 </button>
               <button className="px-8 py-4 border border-[#4c4cab] text-[#4c4cab] font-semibold rounded-xl hover:bg-[#4c4cab] hover:text-white transition-all duration-300">
                 Tìm hiểu thêm
