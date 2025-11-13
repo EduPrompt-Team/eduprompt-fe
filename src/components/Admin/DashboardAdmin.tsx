@@ -7,12 +7,10 @@ import { walletService } from '@/services/walletService';
 import { transactionService } from '@/services/transactionService';
 import { paymentService } from '@/services/paymentService';
 import { postService } from '@/services/postService';
-import { promptInstanceService } from '@/services/promptInstanceService';
 import { templateArchitectureService } from '@/services/templateArchitectureService';
 import { roleService } from '@/services/roleService';
 import { paymentMethodService } from '@/services/paymentMethodService';
 import { apiKeyService } from '@/services/apiKeyService';
-import { PaymentStatus } from '@/types/status';
 import type { Package } from '@/services/packageService';
 import type { Order } from '@/services/orderService';
 import type { Review } from '@/services/reviewService';
@@ -26,7 +24,7 @@ import {
     Trash2, Star, Wallet as WalletIcon, Plus, Minus, Eye, EyeOff, 
     LayoutDashboard, Users, Package as PackageIcon, FileText, ShoppingCart, CreditCard, 
     TrendingUp, MessageSquare, Settings, Key, Shield, Archive, Sparkles,
-    BarChart3, Search, Filter, Download, Edit, MoreVertical
+    BarChart3, Search, Download
 } from 'lucide-react';
 
 type ViewKey = 
@@ -58,13 +56,6 @@ const SidebarButton: React.FC<{ active: boolean; onClick: () => void; children: 
     >
         {children}
     </button>
-);
-
-const StatCard: React.FC<{ label: string; value: number | string }> = ({ label, value }) => (
-    <div className="bg-[#1a1a2d] border border-[#2a2a44] rounded-xl p-4">
-        <div className="text-neutral-400 text-sm">{label}</div>
-        <div className="text-2xl font-semibold text-white mt-1">{value}</div>
-    </div>
 );
 
 const DashboardAdmin: React.FC = () => {
@@ -101,8 +92,6 @@ const DashboardAdmin: React.FC = () => {
     const [loadingAllTemplates, setLoadingAllTemplates] = useState(false);
     const [templateDeleting, setTemplateDeleting] = useState<number | null>(null);
     const [viewingTemplateId, setViewingTemplateId] = useState<number | null>(null);
-    const [purchasedTemplatesCount, setPurchasedTemplatesCount] = useState<number>(0);
-    const [loadingPurchasedCount, setLoadingPurchasedCount] = useState(false);
     
     // State for wallet management
     const [userWallets, setUserWallets] = useState<Map<number, Wallet>>(new Map());
@@ -118,7 +107,6 @@ const DashboardAdmin: React.FC = () => {
     const [allPayments, setAllPayments] = useState<any[]>([]);
     const [allPosts, setAllPosts] = useState<Post[]>([]);
     const [allAIHistories, setAllAIHistories] = useState<AIHistory[]>([]);
-    const [allPromptInstances, setAllPromptInstances] = useState<any[]>([]);
     const [allTemplateArchitectures, setAllTemplateArchitectures] = useState<any[]>([]);
     const [allRoles, setAllRoles] = useState<any[]>([]);
     const [allPaymentMethods, setAllPaymentMethods] = useState<any[]>([]);
@@ -353,7 +341,7 @@ const DashboardAdmin: React.FC = () => {
 
     // Load wallets when manageWallets view is active
     useEffect(() => {
-        if (activeView !== 'manageWallets') return;
+        if (activeView !== 'manageWallets' && activeView !== 'wallets') return;
         
         let mounted = true;
         (async () => {
@@ -397,7 +385,7 @@ const DashboardAdmin: React.FC = () => {
     
     // Load reviews when manageReviews view is active
     useEffect(() => {
-        if (activeView !== 'manageReviews') return;
+        if (activeView !== 'manageReviews' && activeView !== 'reviews') return;
         
         let mounted = true;
         (async () => {
@@ -452,7 +440,7 @@ const DashboardAdmin: React.FC = () => {
 
     // Load all templates when managePrompt view is active
     useEffect(() => {
-        if (activeView !== 'managePrompt') return;
+        if (activeView !== 'managePrompt' && activeView !== 'templates') return;
         
         let mounted = true;
         (async () => {
@@ -486,96 +474,6 @@ const DashboardAdmin: React.FC = () => {
                 setAllTemplates(sortedTemplates);
                 setTotalTemplates(sortedTemplates.length);
                 console.log('[DashboardAdmin] Loaded all templates:', sortedTemplates.length);
-                
-                // Count purchased templates
-                try {
-                    setLoadingPurchasedCount(true);
-                    const allOrders = await orderService.getAllOrders();
-                    const completedOrders = allOrders.filter((order: Order) => 
-                        order.status === 'Completed' || order.status === 'Paid'
-                    );
-                    
-                    // Get all payments with status "Paid"
-                    let paidPayments: any[] = [];
-                    try {
-                        const paymentsResponse = await paymentService.getAll();
-                        const allPayments = Array.isArray(paymentsResponse.data) 
-                            ? paymentsResponse.data 
-                            : (paymentsResponse.data?.data || []);
-                        paidPayments = allPayments.filter((p: any) => 
-                            p.status === PaymentStatus.Paid || p.status === 'Paid'
-                        );
-                    } catch (paymentErr) {
-                        console.warn('[DashboardAdmin] Could not load payments:', paymentErr);
-                    }
-                    
-                    // Collect unique packageIds from orders
-                    const purchasedPackageIds = new Set<number>();
-                    
-                    // From orders
-                    completedOrders.forEach((order: Order) => {
-                        if (order.items && Array.isArray(order.items)) {
-                            order.items.forEach((item: any) => {
-                                const packageId = item.packageID || item.packageId;
-                                if (packageId) {
-                                    purchasedPackageIds.add(packageId);
-                                }
-                            });
-                        }
-                        // Also check order.packageId directly
-                        const orderPackageId = (order as any).packageID || (order as any).packageId;
-                        if (orderPackageId) {
-                            purchasedPackageIds.add(orderPackageId);
-                        }
-                    });
-                    
-                    // From payments (get orderId and then get packageId from order)
-                    for (const payment of paidPayments) {
-                        try {
-                            const orderId = payment.orderID || payment.orderId;
-                            if (orderId) {
-                                const order = await orderService.getOrderById(orderId).catch(() => null);
-                                if (order) {
-                                    if (order.items && Array.isArray(order.items)) {
-                                        order.items.forEach((item: any) => {
-                                            const packageId = item.packageID || item.packageId;
-                                            if (packageId) {
-                                                purchasedPackageIds.add(packageId);
-                                            }
-                                        });
-                                    }
-                                    const orderPackageId = (order as any).packageID || (order as any).packageId;
-                                    if (orderPackageId) {
-                                        purchasedPackageIds.add(orderPackageId);
-                                    }
-                                }
-                            }
-                        } catch (err) {
-                            console.warn('[DashboardAdmin] Could not get order for payment:', err);
-                        }
-                    }
-                    
-                    // Count templates that have been purchased (match by packageId)
-                    const purchasedTemplates = sortedTemplates.filter((template: any) => {
-                        const templatePackageId = template.packageId || template.packageID;
-                        return templatePackageId && purchasedPackageIds.has(templatePackageId);
-                    });
-                    
-                    if (mounted) {
-                        setPurchasedTemplatesCount(purchasedTemplates.length);
-                        console.log('[DashboardAdmin] Purchased templates count:', purchasedTemplates.length);
-                    }
-                } catch (countErr) {
-                    console.error('[DashboardAdmin] Failed to count purchased templates:', countErr);
-                    if (mounted) {
-                        setPurchasedTemplatesCount(0);
-                    }
-                } finally {
-                    if (mounted) {
-                        setLoadingPurchasedCount(false);
-                    }
-                }
-                
                 // Debug: Log first template to check fields
                 if (sortedTemplates.length > 0) {
                     console.log('[DashboardAdmin] Sample template data:', JSON.stringify(sortedTemplates[0], null, 2));
@@ -608,7 +506,17 @@ const DashboardAdmin: React.FC = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const [usersRes, packagesRes, aiHistoryRes, cateResRaw, ordersRes, myTemplatesRes, publicTemplatesRes] = await Promise.all([
+                const [
+                    usersRes,
+                    packagesRes,
+                    aiHistoryRes,
+                    cateResRaw,
+                    ordersRes,
+                    myTemplatesRes,
+                    publicTemplatesRes,
+                    transactionsRes,
+                    paymentsRes
+                ] = await Promise.all([
                     userService.getAllUsers().catch(() => []),
                     packageService.getAllPackages().catch(() => []),
                     aiHistoryService.getAllHistory().catch(() => []),
@@ -616,12 +524,28 @@ const DashboardAdmin: React.FC = () => {
                     orderService.getAllOrders().catch(() => []),
                     storageTemplateService.getMyStorage().catch(() => []),
                     storageTemplateService.getPublicTemplates({}).catch(() => []),
+                    transactionService.getAllTransactions().catch(() => []),
+                    paymentService.getAll().catch(() => []),
                 ]);
                 const cateRes = Array.isArray(cateResRaw) ? cateResRaw : [];
                 if (!mounted) return;
                 setTotalUsers(usersRes?.length ?? 0);
                 setTotalPackages(packagesRes?.length ?? 0);
                 setTotalAIHistory(aiHistoryRes?.length ?? 0);
+                setTotalOrders(ordersRes?.length ?? 0);
+
+                const transactionsData = Array.isArray(transactionsRes) ? transactionsRes : [];
+                setTotalTransactions(transactionsData.length ?? 0);
+
+                const paymentsData = normalizePayments(paymentsRes);
+                setTotalPayments(paymentsData.length);
+                const dashboardRevenue = paymentsData.reduce((sum, payment: any) => {
+                    const status = (payment?.status ?? '').toString().toLowerCase();
+                    const isSuccessful = status === 'paid' || status === 'completed';
+                    const amount = Number(payment?.amount ?? 0);
+                    return isSuccessful ? sum + (Number.isFinite(amount) ? amount : 0) : sum;
+                }, 0);
+                setTotalRevenue(dashboardRevenue);
                 
                 // Combine templates for total count
                 const allTemplatesArray = [...(myTemplatesRes || []), ...(publicTemplatesRes || [])];
@@ -673,6 +597,7 @@ const DashboardAdmin: React.FC = () => {
                     setLoadingOrders(true);
                     const orders = await orderService.getAllOrders();
                     setAllOrders(orders);
+                    setTotalOrders(orders?.length ?? 0);
                 } catch (e) {
                     console.error('Failed to load orders:', e);
                 } finally {
@@ -689,6 +614,7 @@ const DashboardAdmin: React.FC = () => {
                     setLoadingTransactions(true);
                     const transactions = await transactionService.getAllTransactions();
                     setAllTransactions(transactions);
+                    setTotalTransactions(transactions?.length ?? 0);
                 } catch (e) {
                     console.error('Failed to load transactions:', e);
                 } finally {
@@ -704,12 +630,18 @@ const DashboardAdmin: React.FC = () => {
                 try {
                     setLoadingPayments(true);
                     const response = await paymentService.getAll();
-                    const payments = Array.isArray(response.data) 
-                        ? response.data 
-                        : (response.data?.data || []);
+                    const payments = normalizePayments(response);
                     setAllPayments(payments);
+                    setTotalPayments(payments.length);
+                    const revenue = payments.reduce((sum, payment: any) => {
+                        const status = (payment?.status ?? '').toString().toLowerCase();
+                        const amount = Number(payment?.amount ?? 0);
+                        const isSuccessful = status === 'paid' || status === 'completed';
+                        return isSuccessful && Number.isFinite(amount) ? sum + amount : sum;
+                    }, 0);
+                    setTotalRevenue(revenue);
                 } catch (e) {
-                    console.error('Failed to load payments:', e);
+                    showToast('Lỗi khi tải danh sách payments', 'error');
                 } finally {
                     setLoadingPayments(false);
                 }
@@ -859,6 +791,14 @@ const DashboardAdmin: React.FC = () => {
         return items.slice(start, start + pageSize);
     };
 
+    const normalizePayments = (raw: unknown): any[] => {
+        if (Array.isArray(raw)) return raw;
+        if (raw && typeof raw === 'object' && Array.isArray((raw as any).data)) {
+            return (raw as any).data;
+        }
+        return [];
+    };
+
     const exportToCsv = (filename: string, rows: any[]) => {
         if (!rows || rows.length === 0) {
             showToast('Không có dữ liệu để xuất', 'info');
@@ -886,11 +826,15 @@ const DashboardAdmin: React.FC = () => {
 
         const csvContent = [
             headers.join(','),
-            ...rows.map((row: Record<string, any>) =>
-                headers
-                    .map((header) => `"${safeValue(row?.[header])}"`)
-                    .join(',')
-            )
+            ...rows.map((row: Record<string, any>) => {
+                const record = (row ?? {}) as Record<string, any>;
+                return headers
+                    .map((header) => {
+                        const value = (record as Record<string, any>)[header];
+                        return `"${safeValue(value)}"`;
+                    })
+                    .join(',');
+            })
         ].join('\r\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1323,7 +1267,7 @@ const DashboardAdmin: React.FC = () => {
                         {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Nội dung</div>}
                         <SidebarButton 
                             active={activeView === 'packages' || activeView === 'managePackages'} 
-                            onClick={() => setActiveView('packages')}
+                            onClick={() => setActiveView('managePackages')}
                         >
                             <div className="flex items-center gap-3">
                                 <PackageIcon className="w-4 h-4 flex-shrink-0" />
@@ -1341,7 +1285,7 @@ const DashboardAdmin: React.FC = () => {
                         </SidebarButton>
                         <SidebarButton 
                             active={activeView === 'packageCategories' || activeView === 'createCategory'} 
-                            onClick={() => setActiveView('packageCategories')}
+                            onClick={() => setActiveView('createCategory')}
                         >
                             <div className="flex items-center gap-3">
                                 <Archive className="w-4 h-4 flex-shrink-0" />
@@ -1350,7 +1294,7 @@ const DashboardAdmin: React.FC = () => {
                         </SidebarButton>
                         <SidebarButton 
                             active={activeView === 'templates' || activeView === 'managePrompt'} 
-                            onClick={() => setActiveView('templates')}
+                            onClick={() => setActiveView('managePrompt')}
                         >
                             <div className="flex items-center gap-3">
                                 <FileText className="w-4 h-4 flex-shrink-0" />
@@ -1418,7 +1362,7 @@ const DashboardAdmin: React.FC = () => {
                         </SidebarButton>
                         <SidebarButton 
                             active={activeView === 'wallets' || activeView === 'manageWallets'} 
-                            onClick={() => setActiveView('wallets')}
+                            onClick={() => setActiveView('manageWallets')}
                         >
                             <div className="flex items-center gap-3">
                                 <WalletIcon className="w-4 h-4 flex-shrink-0" />
@@ -1450,7 +1394,19 @@ const DashboardAdmin: React.FC = () => {
                         </SidebarButton>
                     </div>
 
-                
+                    {/* Reviews */}
+                    <div className="mb-4">
+                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Đánh giá</div>}
+                        <SidebarButton 
+                            active={activeView === 'reviews' || activeView === 'manageReviews'} 
+                            onClick={() => setActiveView('reviews')}
+                        >
+                            <div className="flex items-center gap-3">
+                                <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                                {!sidebarCollapsed && <span>Reviews</span>}
+                            </div>
+                        </SidebarButton>
+                    </div>
 
                     {/* System Settings */}
                     <div className="mb-4">
@@ -1602,14 +1558,14 @@ const DashboardAdmin: React.FC = () => {
                                             <div className="text-sm font-medium">Xem Orders</div>
                                         </button>
                                         <button
-                                            onClick={() => setActiveView('packages')}
+                                            onClick={() => setActiveView('managePackages')}
                                             className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-purple-500/50 hover:bg-[#1f1f33] transition-colors text-left"
                                         >
                                             <PackageIcon className="w-5 h-5 text-purple-400 mb-2" />
                                             <div className="text-sm font-medium">Quản lý Packages</div>
                                         </button>
                                         <button
-                                            onClick={() => setActiveView('wallets')}
+                                            onClick={() => setActiveView('manageWallets')}
                                             className="p-4 bg-[#1a1a2d] border border-[#2a2a44] rounded-lg hover:border-yellow-500/50 hover:bg-[#1f1f33] transition-colors text-left"
                                         >
                                             <WalletIcon className="w-5 h-5 text-yellow-400 mb-2" />
@@ -1710,28 +1666,15 @@ const DashboardAdmin: React.FC = () => {
                     </div>
                 )}
 
-                {activeView === 'managePrompt' && (
+                {(activeView === 'managePrompt' || activeView === 'templates') && (
                     <div className="space-y-6">
-                        {/* Statistics Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <StatCard 
-                                label="Tổng số Templates Prompt" 
-                                value={loadingAllTemplates ? '...' : totalTemplates}
-                            />
-                            <StatCard 
-                                label="Templates đã được mua" 
-                                value={loadingPurchasedCount ? '...' : purchasedTemplatesCount}
-                            />
-                        </div>
-                        
                         <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold">Danh sách Prompt Templates</h2>
+                                <h2 className="text-xl font-semibold">Quản lý Prompt Templates</h2>
                                 <button
                                     onClick={async () => {
                                         try {
                                             setLoadingAllTemplates(true);
-                                            setLoadingPurchasedCount(true);
                                             const [myTemplatesRes, publicTemplatesRes] = await Promise.all([
                                                 storageTemplateService.getMyStorage().catch(() => []),
                                                 storageTemplateService.getPublicTemplates({}).catch(() => []),
@@ -1754,86 +1697,11 @@ const DashboardAdmin: React.FC = () => {
                                             
                                             setAllTemplates(sortedTemplates);
                                             setTotalTemplates(sortedTemplates.length);
-                                            
-                                            // Recalculate purchased templates count
-                                            try {
-                                                const allOrders = await orderService.getAllOrders();
-                                                const completedOrders = allOrders.filter((order: Order) => 
-                                                    order.status === 'Completed' || order.status === 'Paid'
-                                                );
-                                                
-                                                let paidPayments: any[] = [];
-                                                try {
-                                                    const paymentsResponse = await paymentService.getAll();
-                                                    const allPayments = Array.isArray(paymentsResponse.data) 
-                                                        ? paymentsResponse.data 
-                                                        : (paymentsResponse.data?.data || []);
-                                                    paidPayments = allPayments.filter((p: any) => 
-                                                        p.status === PaymentStatus.Paid || p.status === 'Paid'
-                                                    );
-                                                } catch (paymentErr) {
-                                                    console.warn('[DashboardAdmin] Could not load payments:', paymentErr);
-                                                }
-                                                
-                                                const purchasedPackageIds = new Set<number>();
-                                                
-                                                completedOrders.forEach((order: Order) => {
-                                                    if (order.items && Array.isArray(order.items)) {
-                                                        order.items.forEach((item: any) => {
-                                                            const packageId = item.packageID || item.packageId;
-                                                            if (packageId) {
-                                                                purchasedPackageIds.add(packageId);
-                                                            }
-                                                        });
-                                                    }
-                                                    const orderPackageId = (order as any).packageID || (order as any).packageId;
-                                                    if (orderPackageId) {
-                                                        purchasedPackageIds.add(orderPackageId);
-                                                    }
-                                                });
-                                                
-                                                for (const payment of paidPayments) {
-                                                    try {
-                                                        const orderId = payment.orderID || payment.orderId;
-                                                        if (orderId) {
-                                                            const order = await orderService.getOrderById(orderId).catch(() => null);
-                                                            if (order) {
-                                                                if (order.items && Array.isArray(order.items)) {
-                                                                    order.items.forEach((item: any) => {
-                                                                        const packageId = item.packageID || item.packageId;
-                                                                        if (packageId) {
-                                                                            purchasedPackageIds.add(packageId);
-                                                                        }
-                                                                    });
-                                                                }
-                                                                const orderPackageId = (order as any).packageID || (order as any).packageId;
-                                                                if (orderPackageId) {
-                                                                    purchasedPackageIds.add(orderPackageId);
-                                                                }
-                                                            }
-                                                        }
-                                                    } catch (err) {
-                                                        console.warn('[DashboardAdmin] Could not get order for payment:', err);
-                                                    }
-                                                }
-                                                
-                                                const purchasedTemplates = sortedTemplates.filter((template: any) => {
-                                                    const templatePackageId = template.packageId || template.packageID;
-                                                    return templatePackageId && purchasedPackageIds.has(templatePackageId);
-                                                });
-                                                
-                                                setPurchasedTemplatesCount(purchasedTemplates.length);
-                                            } catch (countErr) {
-                                                console.error('[DashboardAdmin] Failed to count purchased templates:', countErr);
-                                                setPurchasedTemplatesCount(0);
-                                            }
-                                            
                                             showToast('Đã làm mới danh sách templates', 'success');
                                         } catch (e) {
                                             showToast('Không thể làm mới danh sách templates', 'error');
                                         } finally {
                                             setLoadingAllTemplates(false);
-                                            setLoadingPurchasedCount(false);
                                         }
                                     }}
                                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm"
@@ -2557,7 +2425,7 @@ const DashboardAdmin: React.FC = () => {
                     </div>
                 )}
 
-                {activeView === 'managePackages' && (
+                {(activeView === 'managePackages' || activeView === 'packages') && (
                     <div className="space-y-6">
                         {/* Danh sách Package đã tạo */}
                         <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
@@ -3315,7 +3183,7 @@ const DashboardAdmin: React.FC = () => {
                     </div>
                 )}
 
-                {activeView === 'createCategory' && (
+                {(activeView === 'createCategory' || activeView === 'packageCategories') && (
                     <div className="space-y-6">
                         {/* Form tạo phân loại */}
                         <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
@@ -3503,7 +3371,7 @@ const DashboardAdmin: React.FC = () => {
                     </div>
                 )}
 
-                {activeView === 'manageReviews' && (
+                {(activeView === 'manageReviews' || activeView === 'reviews') && (
                     <div className="space-y-6">
                         <div className="bg-[#15152a] border border-[#2a2a44] rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
@@ -3604,57 +3472,29 @@ const DashboardAdmin: React.FC = () => {
                                                             {review.comment}
                                                         </p>
 
-                                                        {/* Storage Template Info with Grade, Subject, Chapter */}
-                                                        {storageTemplate ? (() => {
-                                                            // Extract grade, subject, chapter from template fields or templateContent
-                                                            let displayGrade = storageTemplate.grade
-                                                            let displaySubject = storageTemplate.subject
-                                                            let displayChapter = storageTemplate.chapter
-                                                            
-                                                            // Try to parse from templateContent if fields are missing
-                                                            if (!displayGrade || !displaySubject || !displayChapter) {
-                                                                try {
-                                                                    const parsed = JSON.parse(storageTemplate.templateContent || '{}')
-                                                                    displayGrade = displayGrade || parsed.grade
-                                                                    displaySubject = displaySubject || parsed.subject
-                                                                    displayChapter = displayChapter || parsed.chapter
-                                                                } catch (e) {
-                                                                    // Ignore parse errors
-                                                                }
-                                                            }
-                                                            
-                                                            return (
-                                                                <div className="text-xs mb-2 p-3 bg-[#1a1a2d] rounded border border-[#2a2a44]">
-                                                                    <div className="font-semibold text-blue-400 mb-2">Thông tin Prompt Template:</div>
-                                                                    <div className="text-neutral-300 mb-2">
+                                                        {/* Storage Template Info */}
+                                                        {storageTemplate ? (
+                                                            <div className="text-xs text-neutral-400 mb-2 p-2 bg-[#1a1a2d] rounded border border-[#2a2a44]">
+                                                                <div className="font-semibold text-blue-400 mb-1">Template Prompt:</div>
+                                                                <div className="text-neutral-300">
                                                                     <span className="font-medium">{storageTemplate.templateName || 'Chưa có tên'}</span>
                                                                 </div>
-                                                                    <div className="grid grid-cols-3 gap-2 mt-2">
-                                                                        {displayGrade && (
-                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
-                                                                                <div className="text-neutral-400 text-xs mb-0.5">Khối</div>
-                                                                                <div className="text-white font-semibold text-sm">Lớp {displayGrade}</div>
-                                                                            </div>
+                                                                <div className="mt-1 space-x-2">
+                                                                    {storageTemplate.grade && (
+                                                                        <span className="text-neutral-400">Lớp {storageTemplate.grade}</span>
                                                                     )}
-                                                                        {displaySubject && (
-                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
-                                                                                <div className="text-neutral-400 text-xs mb-0.5">Môn học</div>
-                                                                                <div className="text-white font-semibold text-sm">{displaySubject}</div>
-                                                                            </div>
+                                                                    {storageTemplate.subject && (
+                                                                        <span className="text-neutral-400">• {storageTemplate.subject}</span>
                                                                     )}
-                                                                        {displayChapter && (
-                                                                            <div className="bg-[#23233a] px-2 py-1 rounded border border-[#2a2a44]">
-                                                                                <div className="text-neutral-400 text-xs mb-0.5">Chương</div>
-                                                                                <div className="text-white font-semibold text-sm">{displayChapter}</div>
-                                                                            </div>
+                                                                    {storageTemplate.chapter && (
+                                                                        <span className="text-neutral-400">• {storageTemplate.chapter}</span>
                                                                     )}
                                                                 </div>
                                                                 {storageTemplate.storageId && (
-                                                                        <div className="text-xs text-neutral-500 mt-2">Storage ID: {storageTemplate.storageId}</div>
+                                                                    <div className="text-xs text-neutral-500 mt-1">Storage ID: {storageTemplate.storageId}</div>
                                                                 )}
                                                             </div>
-                                                            )
-                                                        })() : (
+                                                        ) : (
                                                             <div className="text-xs text-yellow-400 mb-2 p-2 bg-[#1a1a2d] rounded border border-yellow-500/30">
                                                                 ⚠️ Không tìm thấy thông tin template (StorageId: {review.storageId})
                                                             </div>
@@ -4045,8 +3885,9 @@ const DashboardAdmin: React.FC = () => {
                                                     setLoadingTransactions(true);
                                                     const transactions = await transactionService.getAllTransactions();
                                                     setAllTransactions(transactions);
+                                                    setTotalTransactions(transactions?.length ?? 0);
                                                 } catch (e) {
-                                                    showToast('Lỗi khi tải danh sách transactions', 'error');
+                                                    console.error('Failed to load transactions:', e);
                                                 } finally {
                                                     setLoadingTransactions(false);
                                                 }
@@ -4183,10 +4024,16 @@ const DashboardAdmin: React.FC = () => {
                                                 try {
                                                     setLoadingPayments(true);
                                                     const response = await paymentService.getAll();
-                                                    const payments = Array.isArray(response.data) 
-                                                        ? response.data 
-                                                        : (response.data?.data || []);
+                                                    const payments = normalizePayments(response);
                                                     setAllPayments(payments);
+                                                    setTotalPayments(payments.length);
+                                                    const revenue = payments.reduce((sum, payment: any) => {
+                                                        const status = (payment?.status ?? '').toString().toLowerCase();
+                                                        const amount = Number(payment?.amount ?? 0);
+                                                        const isSuccessful = status === 'paid' || status === 'completed';
+                                                        return isSuccessful && Number.isFinite(amount) ? sum + amount : sum;
+                                                    }, 0);
+                                                    setTotalRevenue(revenue);
                                                 } catch (e) {
                                                     showToast('Lỗi khi tải danh sách payments', 'error');
                                                 } finally {
@@ -4225,11 +4072,9 @@ const DashboardAdmin: React.FC = () => {
                                                         <td className="py-3 px-4">{payment.amount?.toLocaleString('vi-VN')} VND</td>
                                                         <td className="py-3 px-4">{payment.provider || 'VNPay'}</td>
                                                         <td className="py-3 px-4">
-                                                            <span className={`px-2 py-1 rounded text-xs ${
-                                                                payment.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
+                                                            <span className={`px-2 py-1 rounded text-xs ${payment.status === 'Paid' ? 'bg-green-500/20 text-green-400' :
                                                                 payment.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                                'bg-red-500/20 text-red-400'
-                                                            }`}>
+                                                                'bg-red-500/20 text-red-400'}`}>
                                                                 {payment.status}
                                                             </span>
                                                         </td>
