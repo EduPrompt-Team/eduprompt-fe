@@ -32,6 +32,7 @@ import ChatHistoryPage from '@/components/Page/ChatHistoryPage'
 import CreateTemplatePage from '@/components/Page/CreateTemplatePage'
 import MyTemplatesPage from '@/components/Page/MyTemplatesPage'
 import NonAdminOnlyRoute from '@/components/Admin/NonAdminOnlyRoute'
+import BuyPromptPage from '@/components/Page/BuyPromptPage'
 
 export const router = createBrowserRouter([
 	{ path: '/', element: <Navigate to="/home" replace /> },
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
 	// Avoid Vite's internal /package (serves package.json as ESM); use /packages instead
 	{ path: '/packages', element: (<NonAdminOnlyRoute><PackagePage /></NonAdminOnlyRoute>) },
 	{ path: '/my-packages', element: (<NonAdminOnlyRoute><MyPackagesPage /></NonAdminOnlyRoute>) },
+	{ path: '/Hire', element: (<NonAdminOnlyRoute><BuyPromptPage /></NonAdminOnlyRoute>) },
 	{ path: '/Sell', element: (<NonAdminOnlyRoute><CreateTemplatePage /></NonAdminOnlyRoute>) },
 	{ path: '/my-templates', element: (<NonAdminOnlyRoute><MyTemplatesPage /></NonAdminOnlyRoute>) },
 	// Grade 10 subject dynamic chapter route (backward compatibility for math)

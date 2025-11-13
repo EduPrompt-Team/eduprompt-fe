@@ -1,6 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import HeaderHomepage from '@/components/Layout/HeaderHomepage'
+import Footer from '@/components/Layout/Footer'
+import SiderBar from '@/components/ProfileUser/SiderBar'
 import { packageService } from '@/services/packageService'
 import { packageCategoryService } from '@/services/packageCategoryService'
 import { walletService } from '@/services/walletService'
@@ -502,12 +504,14 @@ const PackagePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a2d] text-white">
+    <div className="min-h-screen bg-[#1a1a2d] text-white flex flex-col">
       <HeaderHomepage />
-      <div className="mx-auto max-w-7xl px-5 py-6">
-        <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex flex-1">
+        <SiderBar />
+        <div className="flex-1 mx-auto max-w-6xl px-5 py-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold">Danh sách Package</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -712,7 +716,9 @@ const PackagePage: React.FC = () => {
             )}
           </div>
         )}
+        </div>
       </div>
+      <Footer />
     </div>
   )
 }

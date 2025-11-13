@@ -59,9 +59,18 @@ const PromptFeatures: React.FC = () => {
                 animationDelay: `${index * 0.1}s`
               }}
               onClick={() => {
-                // Logic tương tự header: chuyển sang trang packages khi chọn "Gói Prompt"
-                if (feature.id === 2) {
-                  navigate('/packages')
+                switch (feature.id) {
+                  case 1:
+                    navigate('/Hire')
+                    break
+                  case 2:
+                    navigate('/packages')
+                    break
+                  case 3:
+                    navigate('/Sell')
+                    break
+                  default:
+                    break
                 }
               }}
             >
