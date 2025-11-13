@@ -9,12 +9,6 @@ export interface TemplateArchitectureDto {
 }
 
 class TemplateArchitectureService {
-  // GET /api/template-architectures
-  async getAll(): Promise<TemplateArchitectureDto[]> {
-    const { data } = await api.get('/api/template-architectures')
-    return data
-  }
-
   // POST /api/template-architectures
   async create(payload: Omit<TemplateArchitectureDto, 'architectureId'>): Promise<TemplateArchitectureDto> {
     const { data } = await api.post('/api/template-architectures', payload)
