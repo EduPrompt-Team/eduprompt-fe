@@ -47,6 +47,25 @@ const subjectDisplayMap: Record<string, string> = {
   'technology': 'Công nghệ',
 }
 
+const slugify = (value: string) =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+
+const resolveSubjectSlug = (label: string) => {
+  if (!label) return ''
+  const lower = label.trim().toLowerCase()
+  const direct = Object.entries(subjectDisplayMap).find(([, display]) => display.toLowerCase() === lower)
+  if (direct) return direct[0]
+  const normalized = slugify(label)
+  const normalizedMatch = Object.entries(subjectDisplayMap).find(([, display]) => slugify(display) === normalized)
+  return normalizedMatch ? normalizedMatch[0] : normalized
+}
+
 // Grade-specific header components (can be expanded later)
 const getHeaderComponent = (grade: string) => {
   switch (grade) {
@@ -90,6 +109,13 @@ export default function DynamicSubjectDetailRouter() {
   const [isPaid, setIsPaid] = useState(false)
   const [checkingPayment, setCheckingPayment] = useState(false)
   const [packageInfo, setPackageInfo] = useState<{ packageId: number; packageName: string } | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    const handler = () => setRefreshKey((key) => key + 1)
+    window.addEventListener('publicTemplatesUpdated', handler)
+    return () => window.removeEventListener('publicTemplatesUpdated', handler)
+  }, [])
 
   // Debug: Log URL params
   useEffect(() => {
@@ -119,6 +145,7 @@ export default function DynamicSubjectDetailRouter() {
   
   // Map subject key to Vietnamese name
   const subjectName = subjectDisplayMap[subject || ''] || subject || ''
+  const subjectSlug = subject || resolveSubjectSlug(subjectName)
   const gradeNum = grade || '10'
 
   // Map subject key back to Vietnamese name for API
@@ -158,15 +185,34 @@ export default function DynamicSubjectDetailRouter() {
         let templatesArray: StorageTemplate[] = []
         
         try {
-          // First try with exact Vietnamese name
-          const data = await storageTemplateService.getPublicTemplates({
+          const requestParams = {
             grade: gradeNum as '10' | '11' | '12',
-            subject: subjectViName,
+            subject: subjectSlug,
             chapter: chapterText,
-          })
+          }
+
+          let data = await storageTemplateService.getPublicTemplates(requestParams)
           templatesArray = Array.isArray(data) ? data : (data as any)?.data || []
-          console.log(`[DynamicRouter] Loaded templates (exact match) for grade=${grade}, subject=${subjectViName}, chapter=${chapterText}:`, templatesArray.length)
-        } catch (e1) {
+
+          if ((!templatesArray || templatesArray.length === 0) && subjectSlug !== subjectViName) {
+            const fallbackParams = {
+              grade: gradeNum as '10' | '11' | '12',
+              subject: subjectViName,
+              chapter: chapterText,
+            }
+            data = await storageTemplateService.getPublicTemplates(fallbackParams)
+            templatesArray = Array.isArray(data) ? data : (data as any)?.data || []
+            console.log(
+              `[DynamicRouter] Loaded templates (fallback Vietnamese) for grade=${grade}, subject=${subjectViName}, chapter=${chapterText}:`,
+              templatesArray.length
+            )
+          } else {
+            console.log(
+              `[DynamicRouter] Loaded templates (slug match) for grade=${grade}, subject=${subjectSlug}, chapter=${chapterText}:`,
+              templatesArray.length
+            )
+          }
+          } catch (e1) {
           console.warn('[DynamicRouter] Exact match failed, trying without filters:', e1)
           // If exact match fails, try fetching all public templates and filter client-side
           try {
@@ -201,9 +247,14 @@ export default function DynamicSubjectDetailRouter() {
                 }
               })()
               
-              return tGrade === gradeNum && 
-                     (tSubject === subjectViName || tSubject?.toLowerCase() === subjectViName?.toLowerCase()) &&
-                     (tChapter === chapterText || tChapter?.includes(chapterNum.toString()))
+              const tSubjectSlug = resolveSubjectSlug(tSubject || '')
+              return (
+                tGrade === gradeNum &&
+                (tSubject === subjectViName ||
+                  tSubject?.toLowerCase() === subjectViName?.toLowerCase() ||
+                  tSubjectSlug === subjectSlug) &&
+                (tChapter === chapterText || tChapter?.includes(chapterNum.toString()))
+              )
             })
             console.log(`[DynamicRouter] Loaded templates (client-side filter) for grade=${gradeNum}, subject=${subjectViName}, chapter=${chapterText}:`, templatesArray.length)
           } catch (e2) {
@@ -212,6 +263,58 @@ export default function DynamicSubjectDetailRouter() {
         }
 
         if (!isMounted) return
+
+        // Fallback: nếu chưa thấy template public và user có template riêng, lấy trong kho cá nhân
+        if (templatesArray.length === 0 && currentUser?.userId) {
+          try {
+            const myTemplates = await storageTemplateService.getMyStorage()
+            const personalMatches = (Array.isArray(myTemplates) ? myTemplates : []).filter((t: StorageTemplate) => {
+              const tGrade = t.grade || (() => {
+                try {
+                  const parsed = JSON.parse(t.templateContent || '{}')
+                  return parsed.grade
+                } catch {
+                  return null
+                }
+              })()
+
+              const tSubject = t.subject || (() => {
+                try {
+                  const parsed = JSON.parse(t.templateContent || '{}')
+                  return parsed.subject
+                } catch {
+                  return null
+                }
+              })()
+              const tSubjectSlug = resolveSubjectSlug(tSubject || '')
+              const tChapter = t.chapter || (() => {
+                try {
+                  const parsed = JSON.parse(t.templateContent || '{}')
+                  return parsed.chapter
+                } catch {
+                  return null
+                }
+              })()
+              return (
+                tGrade === gradeNum &&
+                (tSubject === subjectViName ||
+                  tSubject?.toLowerCase() === subjectViName?.toLowerCase() ||
+                  tSubjectSlug === subjectSlug) &&
+                (tChapter === chapterText || (tChapter || '').includes(chapterNum.toString()))
+              )
+            })
+
+            if (personalMatches.length > 0) {
+              templatesArray = personalMatches
+              console.log(
+                `[DynamicRouter] Using personal templates fallback for grade=${grade}, subject=${subject}, chapter=${chapter}:`,
+                personalMatches.length
+              )
+            }
+          } catch (personalErr) {
+            console.warn('[DynamicRouter] Failed to load personal templates as fallback:', personalErr)
+          }
+        }
 
         setTemplates(templatesArray)
 
@@ -229,7 +332,7 @@ export default function DynamicSubjectDetailRouter() {
     return () => {
       isMounted = false
     }
-  }, [grade, subject, chapter])
+  }, [grade, subject, chapter, refreshKey, currentUser?.userId])
 
   // Get selected template (first one, or can be enhanced to select specific one)
   const selectedPrompt = useMemo(() => templates[0], [templates])
@@ -247,7 +350,16 @@ export default function DynamicSubjectDetailRouter() {
   // Get packageId for payment check (legacy)
   const selectedPackageId = useMemo(() => {
     if (!selectedPrompt) return undefined
-    const rawPackageId = (selectedPrompt as any)?.packageId
+    const rawPackageId =
+      (selectedPrompt as any)?.packageId ??
+      (() => {
+        try {
+          const parsed = JSON.parse(selectedPrompt.templateContent || '{}')
+          return parsed?.packageId
+        } catch {
+          return undefined
+        }
+      })()
     const parsed = typeof rawPackageId === 'number' ? rawPackageId : Number(rawPackageId)
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
   }, [selectedPrompt])
@@ -255,7 +367,16 @@ export default function DynamicSubjectDetailRouter() {
   // Get actual packageId from template for payment check
   const templatePackageId = useMemo(() => {
     if (!selectedPrompt) return undefined
-    const rawPackageId = (selectedPrompt as any)?.packageId
+    const rawPackageId =
+      (selectedPrompt as any)?.packageId ??
+      (() => {
+        try {
+          const parsed = JSON.parse(selectedPrompt.templateContent || '{}')
+          return parsed?.packageId
+        } catch {
+          return undefined
+        }
+      })()
     const parsed = typeof rawPackageId === 'number' ? rawPackageId : Number(rawPackageId)
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
   }, [selectedPrompt])

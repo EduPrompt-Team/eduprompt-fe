@@ -23,6 +23,44 @@ const FavoritesPrompt: React.FC = () => {
   const [removingIds, setRemovingIds] = useState<Set<number>>(new Set())
   const defaultImage = new URL('../../assets/Image/Toan10.png', import.meta.url).href
 
+  const slugify = (value: string) =>
+    (value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+
+  const resolveSubjectSlug = (label: string) => {
+    if (!label) return ''
+    const subjectMap: Record<string, string> = {
+      'Toán': 'math',
+      'Vật lý': 'physics',
+      'Hóa học': 'chemistry',
+      'Sinh học': 'biology',
+      'Ngữ văn': 'literature',
+      'Lịch sử': 'history',
+      'Địa lý': 'geography',
+      'Tiếng Anh': 'english',
+      'Tin học': 'informatics',
+      'Công nghệ': 'technology',
+    }
+    const lower = label.trim().toLowerCase()
+    const direct = Object.entries(subjectMap).find(([, display]) => display.toLowerCase() === lower)
+    if (direct) return direct[0]
+    const normalized = slugify(label)
+    const normalizedMatch = Object.entries(subjectMap).find(([, display]) => slugify(display) === normalized)
+    return normalizedMatch ? normalizedMatch[0] : normalized
+  }
+
+  const generateChapterSlug = (chapter: string) => {
+    if (!chapter) return ''
+    const match = chapter.match(/\d+/)
+    const num = match ? match[0] : ''
+    return num ? `chuong${num}` : slugify(chapter)
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -30,7 +68,11 @@ const FavoritesPrompt: React.FC = () => {
       try {
         setLoading(true)
         setError(null)
-        const items = await wishlistService.getMyWishlist()
+        const [items, publicTemplates, myTemplates] = await Promise.all([
+          wishlistService.getMyWishlist(),
+          storageTemplateService.getPublicTemplates({}).catch(() => []),
+          storageTemplateService.getMyStorage().catch(() => [])
+        ])
         
         console.log('[FavoritesPrompt] Raw wishlist response:', items)
         
@@ -47,33 +89,42 @@ const FavoritesPrompt: React.FC = () => {
         const itemsArray = Array.isArray(items) ? items : [items]
         console.log('[FavoritesPrompt] Processing', itemsArray.length, 'wishlist items')
 
+        const templateMap = new Map<number, StorageTemplate>()
+        ;(Array.isArray(publicTemplates) ? publicTemplates : []).forEach((tpl: any) => {
+          if (tpl?.storageId) templateMap.set(tpl.storageId, tpl)
+        })
+        ;(Array.isArray(myTemplates) ? myTemplates : []).forEach((tpl: any) => {
+          if (tpl?.storageId) templateMap.set(tpl.storageId, { ...templateMap.get(tpl.storageId), ...tpl })
+        })
+
         // Load storage template details for each wishlist item
-        // Note: packageId in wishlist might actually be storageId
         const itemsWithTemplates = await Promise.all(
           itemsArray.map(async (item) => {
             try {
               let template: StorageTemplate | null = null
-              try {
-                const storageIdToUse = item.storageId ?? item.packageId
-                if (storageIdToUse) {
-                  const allTemplates = await storageTemplateService.getPublicTemplates({})
-                  template = Array.isArray(allTemplates) 
-                    ? allTemplates.find((t: any) => t.storageId === storageIdToUse) || null
-                    : null
+              const storageIdToUse = item.storageId ?? null
+              if (storageIdToUse && templateMap.has(storageIdToUse)) {
+                template = templateMap.get(storageIdToUse) || null
+              }
+
+              if (!template && item.templateContent) {
+                try {
+                  const parsed = JSON.parse(item.templateContent)
+                  template = {
+                    storageId: storageIdToUse || parsed?.storageId || 0,
+                    packageId: parsed?.packageId || item.packageId || 0,
+                    templateName: parsed?.templateName || item.templateName || `Template ${item.wishlistId}`,
+                    templateContent: parsed?.content || item.templateContent,
+                    grade: parsed?.grade || item.grade || undefined,
+                    subject: parsed?.subject || item.subject || undefined,
+                    chapter: parsed?.chapter || item.chapter || undefined,
+                    userId: parsed?.userId || undefined,
+                    isPublic: parsed?.isPublic ?? item.isPublic ?? true,
+                    createdAt: parsed?.createdAt || item.templateCreatedAt || item.addedAt || new Date().toISOString()
+                  } as StorageTemplate
+                } catch (parseErr) {
+                  console.warn(`[FavoritesPrompt] Failed to parse templateContent for wishlist ${item.wishlistId}:`, parseErr)
                 }
-                
-                if (!template && item.packageId) {
-                  const templatesByPackage = await storageTemplateService.getPublicTemplates({ packageId: item.packageId })
-                  template = Array.isArray(templatesByPackage) && templatesByPackage.length > 0 
-                    ? templatesByPackage[0] 
-                    : null
-                }
-                
-                if (template) {
-                  console.log(`[FavoritesPrompt] Found template for item ${item.wishlistId}:`, template)
-                }
-              } catch (e) {
-                console.warn(`[FavoritesPrompt] No template found for item ${item.wishlistId}:`, e)
               }
               
               // Try to get package info as fallback
@@ -178,30 +229,12 @@ const FavoritesPrompt: React.FC = () => {
     // If has template, navigate to template detail page
     if (item.template) {
       const grade = item.template.grade || '10'
-      const subjectVi = item.template.subject || 'Toán'
-      const chapter = item.template.chapter || 'Chương 1'
-      
-      // Map Vietnamese subject name to English key for URL
-      const subjectMap: Record<string, string> = {
-        'Toán': 'math',
-        'Vật lý': 'physics',
-        'Hóa học': 'chemistry',
-        'Sinh học': 'biology',
-        'Ngữ văn': 'literature',
-        'Lịch sử': 'history',
-        'Địa lý': 'geography',
-        'Tiếng Anh': 'english',
-        'Tin học': 'informatics',
-        'Công nghệ': 'technology',
-      }
-      const subject = subjectMap[subjectVi] || subjectVi.toLowerCase().replace(/\s+/g, '-')
-      
-      // Extract chapter number (e.g., "Chương 1" -> "chuong1")
-      const chapterMatch = chapter.match(/\d+/)
-      const chapterNum = chapterMatch ? chapterMatch[0] : '1'
-      const chapterSlug = `chuong${chapterNum}`
-      
-      navigate(`/grade/${grade}/${subject}/detail/${chapterSlug}`)
+      const subjectVi = item.template.subject || ''
+      const chapter = item.template.chapter || ''
+      const subjectSlug = resolveSubjectSlug(subjectVi)
+      const chapterSlug = generateChapterSlug(chapter || 'Chương 1')
+
+      navigate(`/grade/${grade}/${subjectSlug}/detail/${chapterSlug}`)
     } else {
       // Otherwise, navigate to packages page
       navigate('/packages')

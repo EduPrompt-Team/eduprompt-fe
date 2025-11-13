@@ -25,6 +25,13 @@ const DynamicSubjectChaptersPage: React.FC = () => {
 
   const [chapters, setChapters] = useState<Array<{ key: string; title: string; count: number; latest?: string }>>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    const handler = () => setRefreshKey((key) => key + 1)
+    window.addEventListener('publicTemplatesUpdated', handler)
+    return () => window.removeEventListener('publicTemplatesUpdated', handler)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -71,7 +78,7 @@ const DynamicSubjectChaptersPage: React.FC = () => {
       }
     })()
     return () => { mounted = false }
-  }, [grade, subject])
+  }, [grade, subject, refreshKey])
 
   const subjectVi = subjectDisplayMap[subject] || subject
 

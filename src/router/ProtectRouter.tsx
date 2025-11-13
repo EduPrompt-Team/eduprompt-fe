@@ -29,6 +29,8 @@ import DynamicSubjectChaptersPage from '@/components/Page/DynamicSubjectChapters
 import DynamicTemplateFormPage from '@/components/Page/DynamicTemplateFormPage'
 import DynamicChatPage from '@/components/Page/DynamicChatPage'
 import ChatHistoryPage from '@/components/Page/ChatHistoryPage'
+import CreateTemplatePage from '@/components/Page/CreateTemplatePage'
+import MyTemplatesPage from '@/components/Page/MyTemplatesPage'
 import NonAdminOnlyRoute from '@/components/Admin/NonAdminOnlyRoute'
 
 export const router = createBrowserRouter([
@@ -56,6 +58,8 @@ export const router = createBrowserRouter([
 	// Avoid Vite's internal /package (serves package.json as ESM); use /packages instead
 	{ path: '/packages', element: (<NonAdminOnlyRoute><PackagePage /></NonAdminOnlyRoute>) },
 	{ path: '/my-packages', element: (<NonAdminOnlyRoute><MyPackagesPage /></NonAdminOnlyRoute>) },
+	{ path: '/Sell', element: (<NonAdminOnlyRoute><CreateTemplatePage /></NonAdminOnlyRoute>) },
+	{ path: '/my-templates', element: (<NonAdminOnlyRoute><MyTemplatesPage /></NonAdminOnlyRoute>) },
 	// Grade 10 subject dynamic chapter route (backward compatibility for math)
 	{ path: '/grade10/:subject/detail/:chapter', element: (<NonAdminOnlyRoute><Grade10SubjectDetailRouter /></NonAdminOnlyRoute>) },
 	// Grade 10 form and chat routes

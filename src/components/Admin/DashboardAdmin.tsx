@@ -870,7 +870,7 @@ const DashboardAdmin: React.FC = () => {
             return set;
         }, new Set<string>());
 
-        const headers = Array.from(headerSet);
+        const headers: string[] = Array.from(headerSet);
 
         const safeValue = (value: any) => {
             if (value === null || value === undefined) return '';
@@ -1450,19 +1450,7 @@ const DashboardAdmin: React.FC = () => {
                         </SidebarButton>
                     </div>
 
-                    {/* Reviews */}
-                    <div className="mb-4">
-                        {!sidebarCollapsed && <div className="text-xs font-semibold text-neutral-500 uppercase mb-2 px-2">Đánh giá</div>}
-                        <SidebarButton 
-                            active={activeView === 'reviews' || activeView === 'manageReviews'} 
-                            onClick={() => setActiveView('reviews')}
-                        >
-                            <div className="flex items-center gap-3">
-                                <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                                {!sidebarCollapsed && <span>Reviews</span>}
-                            </div>
-                        </SidebarButton>
-                    </div>
+                
 
                     {/* System Settings */}
                     <div className="mb-4">
