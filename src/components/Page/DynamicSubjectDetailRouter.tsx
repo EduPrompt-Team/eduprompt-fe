@@ -181,84 +181,135 @@ export default function DynamicSubjectDetailRouter() {
         setLoading(true)
         setError(null)
 
-        // Try to fetch templates - allow both exact match and flexible matching
-        let templatesArray: StorageTemplate[] = []
-        
-        try {
-          const requestParams = {
-            grade: gradeNum as '10' | '11' | '12',
-            subject: subjectSlug,
-            chapter: chapterText,
-          }
+        const normalizeLoose = (value: string | null | undefined) =>
+          slugify(value || '').replace(/-/g, '')
 
-          let data = await storageTemplateService.getPublicTemplates(requestParams)
-          templatesArray = Array.isArray(data) ? data : (data as any)?.data || []
+        const buildComparisonSet = (values: Array<string | null | undefined>) => {
+          const set = new Set<string>()
+          values
+            .map((val) => val?.toString().trim())
+            .filter(Boolean)
+            .forEach((val) => {
+              const lower = val!.toLowerCase()
+              set.add(lower)
+              if (lower.includes(' ')) set.add(lower.replace(/\s+/g, ''))
+              set.add(slugify(val!))
+              set.add(normalizeLoose(val))
+            })
+          return set
+        }
 
-          if ((!templatesArray || templatesArray.length === 0) && subjectSlug !== subjectViName) {
-            const fallbackParams = {
-              grade: gradeNum as '10' | '11' | '12',
-              subject: subjectViName,
-              chapter: chapterText,
-            }
-            data = await storageTemplateService.getPublicTemplates(fallbackParams)
-            templatesArray = Array.isArray(data) ? data : (data as any)?.data || []
-            console.log(
-              `[DynamicRouter] Loaded templates (fallback Vietnamese) for grade=${grade}, subject=${subjectViName}, chapter=${chapterText}:`,
-              templatesArray.length
-            )
-          } else {
-            console.log(
-              `[DynamicRouter] Loaded templates (slug match) for grade=${grade}, subject=${subjectSlug}, chapter=${chapterText}:`,
-              templatesArray.length
-            )
-          }
-          } catch (e1) {
-          console.warn('[DynamicRouter] Exact match failed, trying without filters:', e1)
-          // If exact match fails, try fetching all public templates and filter client-side
-          try {
-            const allData = await storageTemplateService.getPublicTemplates({})
-            const allTemplates = Array.isArray(allData) ? allData : (allData as any)?.data || []
-            // Filter by grade, subject, chapter
-            templatesArray = allTemplates.filter((t: StorageTemplate) => {
-              const tGrade = t.grade || (() => {
-                try {
-                  const parsed = JSON.parse(t.templateContent || '{}')
-                  return parsed.grade
-                } catch {
-                  return null
-                }
-              })()
-              
-              const tSubject = t.subject || (() => {
-                try {
-                  const parsed = JSON.parse(t.templateContent || '{}')
-                  return parsed.subject
-                } catch {
-                  return null
-                }
-              })()
-              
-              const tChapter = t.chapter || (() => {
-                try {
-                  const parsed = JSON.parse(t.templateContent || '{}')
-                  return parsed.chapter
-                } catch {
-                  return null
-                }
-              })()
-              
-              const tSubjectSlug = resolveSubjectSlug(tSubject || '')
+        const subjectComparison = buildComparisonSet([
+          subject,
+          subjectSlug,
+          subjectViName,
+          resolveSubjectSlug(subjectViName || ''),
+          slugify(subjectViName || '')
+        ])
+
+        const chapterComparison = buildComparisonSet([
+          chapter,
+          chapterText,
+          `Chương ${chapterNum}`,
+          chapter?.replace(/-/g, ' '),
+          `chuong${chapterNum}`
+        ])
+
+        const filterTemplates = (source: StorageTemplate[]) => {
+          return source.filter((t: StorageTemplate) => {
+            const parsed = (() => {
+              try {
+                return JSON.parse(t.templateContent || '{}')
+              } catch {
+                return {}
+              }
+            })() as Record<string, any>
+
+            const tGrade = t.grade ?? parsed.grade
+
+            const candidateSubjects = [
+              t.subject,
+              parsed.subject,
+              resolveSubjectSlug(t.subject || ''),
+              resolveSubjectSlug(parsed.subject || ''),
+              parsed.subjectSlug
+            ]
+
+            const subjectMatches = candidateSubjects.some((val) => {
+              if (!val) return false
+              const lower = val.toString().toLowerCase()
               return (
-                tGrade === gradeNum &&
-                (tSubject === subjectViName ||
-                  tSubject?.toLowerCase() === subjectViName?.toLowerCase() ||
-                  tSubjectSlug === subjectSlug) &&
-                (tChapter === chapterText || tChapter?.includes(chapterNum.toString()))
+                subjectComparison.has(lower) ||
+                subjectComparison.has(slugify(val)) ||
+                subjectComparison.has(normalizeLoose(val))
               )
             })
-            console.log(`[DynamicRouter] Loaded templates (client-side filter) for grade=${gradeNum}, subject=${subjectViName}, chapter=${chapterText}:`, templatesArray.length)
-          } catch (e2) {
-            console.error('[DynamicRouter] Both fetch methods failed:', e2)
+
+            const candidateChapters = [
+              t.chapter,
+              parsed.chapter,
+              parsed.chapterSlug,
+              (() => {
+                const route: string | undefined = parsed.route
+                if (!route) return undefined
+                const parts = route.split('/')
+                return parts[parts.length - 1]
+              })()
+            ]
+
+            const chapterMatches = candidateChapters.some((val) => {
+              if (!val) return false
+              const lower = val.toString().toLowerCase()
+              return (
+                chapterComparison.has(lower) ||
+                chapterComparison.has(slugify(val)) ||
+                chapterComparison.has(normalizeLoose(val))
+              )
+            })
+
+            const gradeMatches = !gradeNum || (tGrade && tGrade.toString() === gradeNum.toString())
+
+            return gradeMatches && subjectMatches && chapterMatches
+          })
+        }
+
+        let templatesArray: StorageTemplate[] = []
+        try {
+          const data = await storageTemplateService.getPublicTemplates({
+            grade: gradeNum as '10' | '11' | '12',
+            subject: subjectViName
+          })
+          const list = Array.isArray(data) ? data : (data as any)?.data || []
+          templatesArray = filterTemplates(list as StorageTemplate[])
+          console.log('[DynamicRouter] Loaded public templates via subject name:', templatesArray.length)
+        } catch (callErr) {
+          console.warn('[DynamicRouter] Failed to load public templates by subject name:', callErr)
+        }
+
+        if (templatesArray.length === 0) {
+          try {
+            const data = await storageTemplateService.getPublicTemplates({
+              grade: gradeNum as '10' | '11' | '12',
+              subject: subjectSlug
+            })
+            const list = Array.isArray(data) ? data : (data as any)?.data || []
+            templatesArray = filterTemplates(list as StorageTemplate[])
+            console.log('[DynamicRouter] Loaded public templates via subject slug:', templatesArray.length)
+          } catch (callErr) {
+            console.warn('[DynamicRouter] Failed to load public templates by subject slug:', callErr)
+          }
+        }
+
+        if (templatesArray.length === 0) {
+          try {
+            const data = await storageTemplateService.getPublicTemplates({
+              grade: gradeNum as '10' | '11' | '12'
+            })
+            const list = Array.isArray(data) ? data : (data as any)?.data || []
+            templatesArray = filterTemplates(list as StorageTemplate[])
+            console.log('[DynamicRouter] Loaded public templates via grade:', templatesArray.length)
+          } catch (callErr) {
+            console.warn('[DynamicRouter] Failed to load public templates by grade:', callErr)
           }
         }
 

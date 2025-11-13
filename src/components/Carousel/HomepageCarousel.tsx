@@ -9,10 +9,10 @@ const HomepageCarousel: React.FC = () => {
   const slides = [
     {
       id: 1,
-      title: "Tìm kiếm Prompt AI",
+      title: "Mua Prompt",
       description: "Khám phá hàng nghìn prompt AI được tối ưu cho giáo dục THPT",
       image: new URL('../../assets/Image/Carousel.png', import.meta.url).href,
-      buttonText: "Khám phá ngay"
+      buttonText: "Mua ngay"
     },
     {
       id: 2,
@@ -23,10 +23,10 @@ const HomepageCarousel: React.FC = () => {
     },
     {
       id: 3,
-      title: "Cộng Đồng Giáo Viên",
+      title: "Bán Prompt",
       description: "Kết nối và chia sẻ kinh nghiệm với đồng nghiệp",
       image: new URL('../../assets/Image/Carousel3.png', import.meta.url).href,
-      buttonText: "Tham gia ngay"
+      buttonText: "Tạo Prompt"
     }
   ]
 
@@ -79,7 +79,19 @@ const HomepageCarousel: React.FC = () => {
                   </p>
                   <button
                     onClick={() => {
-                      if (slide.id === 2) navigate('/packages')
+                      switch (slide.id) {
+                        case 1:
+                          navigate('/Hire')
+                          break
+                        case 2:
+                          navigate('/packages')
+                          break
+                        case 3:
+                          navigate('/Sell')
+                          break
+                        default:
+                          break
+                      }
                     }}
                     className="bg-gradient-to-r from-rose-400 to-orange-400 text-white px-8 py-4 rounded-xl font-semibold hover:from-rose-500 hover:to-orange-500 transition-all duration-300 hover:scale-105 active:scale-95 slide-up anim-delay-200"
                   >

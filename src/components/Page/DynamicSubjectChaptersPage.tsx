@@ -7,9 +7,52 @@ import { storageTemplateService } from '@/services/storageTemplateService'
 
 // Map key -> Vietnamese subject for display
 const subjectDisplayMap: Record<string, string> = {
-  math: 'Toán', physics: 'Vật lý', chemistry: 'Hóa học', biology: 'Sinh học',
-  literature: 'Ngữ văn', history: 'Lịch sử', geography: 'Địa lý', english: 'Tiếng Anh',
-  it: 'Tin học', technology: 'Công nghệ'
+  math: 'Toán',
+  physics: 'Vật lý',
+  chemistry: 'Hóa học',
+  biology: 'Sinh học',
+  literature: 'Ngữ văn',
+  history: 'Lịch sử',
+  geography: 'Địa lý',
+  english: 'Tiếng Anh',
+  informatics: 'Tin học',
+  technology: 'Công nghệ'
+}
+
+const slugify = (value: string) =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+
+const normalizeLoose = (value: string) => slugify(value).replace(/-/g, '')
+
+const buildComparisonSet = (values: Array<string | null | undefined>) => {
+  const set = new Set<string>()
+  values
+    .map((val) => val?.toString().trim())
+    .filter(Boolean)
+    .forEach((val) => {
+      const lower = val!.toLowerCase()
+      set.add(lower)
+      set.add(slugify(val!))
+      set.add(normalizeLoose(val!))
+      if (lower.includes(' ')) set.add(lower.replace(/\s+/g, ''))
+    })
+  return set
+}
+
+const resolveSubjectSlug = (label: string) => {
+  if (!label) return ''
+  const lower = label.trim().toLowerCase()
+  const entry = Object.entries(subjectDisplayMap).find(([, display]) => display.toLowerCase() === lower)
+  if (entry) return entry[0]
+  const normalized = slugify(label)
+  const normalizedEntry = Object.entries(subjectDisplayMap).find(([, display]) => slugify(display) === normalized)
+  return normalizedEntry ? normalizedEntry[0] : normalized
 }
 
 const DynamicSubjectChaptersPage: React.FC = () => {
@@ -38,17 +81,99 @@ const DynamicSubjectChaptersPage: React.FC = () => {
     ;(async () => {
       try {
         setLoading(true)
-        // Fetch public templates and collect unique chapters for this grade+subject
-        // Coerce grade param from string to the allowed Grade union ('10' | '11' | '12')
         type GradeUnion = '10' | '11' | '12'
-        const gradeFilter: GradeUnion | undefined = (['10','11','12'] as GradeUnion[]).includes(grade as GradeUnion)
+        const gradeFilter: GradeUnion | undefined = (['10', '11', '12'] as GradeUnion[]).includes(grade as GradeUnion)
           ? (grade as GradeUnion)
           : undefined
-        const list = await storageTemplateService
-          .getPublicTemplates({ grade: gradeFilter, subject: subjectDisplayMap[subject] || subject })
-          .catch(() => [])
+
+        const subjectSlug = resolveSubjectSlug(subject)
+        const subjectVi = subjectDisplayMap[subject] || subject
+
+        const subjectComparison = buildComparisonSet([
+          subject,
+          subjectSlug,
+          subjectVi,
+          resolveSubjectSlug(subjectVi || ''),
+          slugify(subjectVi || '')
+        ])
+
+        const filterTemplates = (source: any[]) => {
+          return source.filter((t: any) => {
+            const parsed = (() => {
+              try {
+                return JSON.parse(t.templateContent || '{}')
+              } catch {
+                return {}
+              }
+            })() as Record<string, any>
+
+            const tGrade = t.grade ?? parsed.grade
+
+            const candidateSubjects = [
+              t.subject,
+              parsed.subject,
+              resolveSubjectSlug(t.subject || ''),
+              resolveSubjectSlug(parsed.subject || ''),
+              parsed.subjectSlug
+            ]
+
+            const subjectMatches = candidateSubjects.some((val) => {
+              if (!val) return false
+              const lower = val.toString().toLowerCase()
+              return (
+                subjectComparison.has(lower) ||
+                subjectComparison.has(slugify(val)) ||
+                subjectComparison.has(normalizeLoose(val))
+              )
+            })
+
+            const gradeMatches = !gradeFilter || (tGrade && tGrade.toString() === gradeFilter.toString())
+
+            return gradeMatches && subjectMatches
+          })
+        }
+
+        let filteredList: any[] = []
+
+        try {
+          const response = await storageTemplateService.getPublicTemplates({
+            grade: gradeFilter,
+            subject: subjectVi
+          })
+          const list = Array.isArray(response) ? response : (response as any)?.data || []
+          filteredList = filterTemplates(list)
+          console.log('[Chapters] Loaded public templates with subject name:', filteredList.length)
+        } catch (err) {
+          console.warn('[Chapters] Failed to load public templates with subject name', subjectVi, err)
+        }
+
+        if (filteredList.length === 0 && subjectSlug) {
+          try {
+            const response = await storageTemplateService.getPublicTemplates({
+              grade: gradeFilter,
+              subject: subjectSlug
+            })
+            const list = Array.isArray(response) ? response : (response as any)?.data || []
+            filteredList = filterTemplates(list)
+            console.log('[Chapters] Loaded public templates with subject slug:', filteredList.length)
+          } catch (err) {
+            console.warn('[Chapters] Failed to load public templates with subject slug', subjectSlug, err)
+          }
+        }
+
+        if (filteredList.length === 0) {
+          try {
+            const response = await storageTemplateService.getPublicTemplates({ grade: gradeFilter })
+            const list = Array.isArray(response) ? response : (response as any)?.data || []
+            filteredList = filterTemplates(list)
+            console.log('[Chapters] Loaded templates via grade fallback:', filteredList.length)
+          } catch (err) {
+            console.warn('[Chapters] Fallback load all public templates failed:', err)
+          }
+        }
+
         const unique = new Map<string, { title: string; count: number; latest?: string }>()
-        ;(Array.isArray(list) ? list : []).forEach((t: any) => {
+        filteredList.forEach((t: any) => {
           const ch: string = t.chapter || (() => {
             try {
               const c = JSON.parse(t.templateContent || '{}')
