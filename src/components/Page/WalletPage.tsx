@@ -480,7 +480,12 @@ const WalletPage: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-neutral-400">Ngày tạo ví</span>
                     <span className="font-medium text-white">
-                      {wallet ? new Date(wallet.createdDate).toLocaleDateString() : 'N/A'}
+                      {wallet ? new Date(wallet.createdDate).toLocaleDateString('vi-VN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        timeZone: 'Asia/Ho_Chi_Minh'
+                      }) : 'N/A'}
                     </span>
                   </div>
                   
@@ -531,12 +536,13 @@ const WalletPage: React.FC = () => {
                                 : transaction.transactionType}
                             </p>
                             <p className="text-sm text-neutral-400">
-                              {new Date(transaction.transactionDate).toLocaleDateString('en-US', {
+                              {new Date(transaction.transactionDate).toLocaleDateString('vi-VN', {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric',
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                timeZone: 'Asia/Ho_Chi_Minh'
                               })}
                             </p>
                             {transaction.transactionReference && (transaction.transactionReference.includes('TXN-') || transaction.transactionReference.includes('WLT-') || transaction.transactionReference.includes('ORD-')) && (

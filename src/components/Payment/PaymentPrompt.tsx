@@ -1027,7 +1027,7 @@ const PaymentPrompt: React.FC = () => {
       }
       
       // 3. Tạo Transaction với TransactionType = "TopUp" (theo backend)
-      // Status mặc định sẽ là "Pending" - không update ngay
+      // Status = "Completed" vì đây là test mode, thanh toán thành công ngay
       // Sử dụng transactionReference hoặc description để lưu nội dung thanh toán
       let transactionId: number | null = null
       let transactionCreated = false
@@ -1040,13 +1040,14 @@ const PaymentPrompt: React.FC = () => {
             walletId: wallet.walletID,
             amount: amountNum,
             transactionType: 'TopUp', // Phải là "TopUp" theo backend, không phải "Deposit"
+            status: 'Completed', // Test mode: thanh toán thành công ngay
             transactionReference: desc || `Nạp tiền ví EduPrompt - ${new Date().toISOString()}`, // Lưu nội dung thanh toán
             description: desc || 'Nạp tiền ví EduPrompt', // Thêm description nếu backend hỗ trợ
           })
           
           transactionId = transaction.transactionId || transaction.id || null
           transactionCreated = true
-          console.log('✅ Transaction created with status Pending:', transaction, 'ID:', transactionId)
+          console.log('✅ Transaction created with status Completed:', transaction, 'ID:', transactionId)
         } catch (transErr: any) {
           console.warn('⚠️ Could not create transaction (wallet may not exist yet):', transErr?.response?.status || transErr?.message)
           // Tiếp tục dù không tạo được transaction - backend có thể tự tạo wallet
@@ -1089,31 +1090,14 @@ const PaymentPrompt: React.FC = () => {
         }))
       }
       
-      // 5. Hiển thị thông báo thành công với status "Đang xử lý" (Pending)
+      // 5. Hiển thị thông báo thành công
       setSuccess(true)
       const successMessage = `Nạp tiền vào ví thành công!\n\n` +
         `Số tiền: ${amountNum.toLocaleString('vi-VN')} VND\n` +
         `Số dư ví: ${finalBalance.toLocaleString('vi-VN')} VND\n\n` +
-        `Transaction Status: ${transactionCreated ? 'Đang xử lý (Pending)' : 'Chưa tạo (kiểm tra backend)'}`
+        `Transaction Status: ${transactionCreated ? 'Thành công (Completed)' : 'Chưa tạo (kiểm tra backend)'}`
       
       showToast(successMessage, 'success', 5000)
-      
-      // 6. Update transaction status thành "Completed" SAU KHI đã hiển thị toast
-      // Chạy sau khi toast được hiển thị (async, không block UI)
-      if (transactionId && transactionCreated) {
-        // Đợi một chút để đảm bảo toast đã được hiển thị
-        setTimeout(async () => {
-          try {
-            await transactionService.updateTransaction(transactionId!, {
-              status: TransactionStatus.Completed, // "Completed"
-            })
-            console.log('✅ Transaction status updated to Completed after showing toast')
-          } catch (updateErr: any) {
-            console.warn('⚠️ Could not update transaction status:', updateErr?.response?.status || updateErr?.message)
-            // Tiếp tục dù có lỗi update status
-          }
-        }, 500) // Đợi 500ms sau khi toast được hiển thị
-      }
       
       // Refresh wallet để lấy walletId mới nếu backend đã tạo wallet
       try {
@@ -1352,25 +1336,6 @@ const PaymentPrompt: React.FC = () => {
                         <div className="space-y-2">
                           <p className="text-xs text-neutral-400 mb-2">Chọn phương thức thanh toán VNPay:</p>
                           
-                          {/* VNPay QR Code */}
-                          <button 
-                            onClick={() => handleVnpayPayment('VNPAYQR')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>📱</span>
-                                <span>Thanh toán bằng QR Code</span>
-                              </>
-                            )}
-                          </button>
-                          
                           {/* VNPay Default */}
                           <button 
                             onClick={() => handleVnpayPayment()} 
@@ -1386,44 +1351,6 @@ const PaymentPrompt: React.FC = () => {
                               <>
                                 <span>💳</span>
                                 <span>Thanh toán VNPay (Mặc định)</span>
-                              </>
-                            )}
-                          </button>
-                          
-                          {/* VNPay ATM */}
-                          <button 
-                            onClick={() => handleVnpayPayment('VNBANK')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>🏦</span>
-                                <span>Thẻ nội địa (ATM)</span>
-                              </>
-                            )}
-                          </button>
-                          
-                          {/* VNPay International Card */}
-                          <button 
-                            onClick={() => handleVnpayPayment('INTCARD')} 
-                            disabled={vnpayLoading || loading || !amount || Number(amount) < 1000 || success} 
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-500 hover:to-red-400 text-white text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {vnpayLoading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                <span>Đang tạo link thanh toán...</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>🌍</span>
-                                <span>Thẻ quốc tế (VISA/Mastercard)</span>
                               </>
                             )}
                           </button>
@@ -1462,7 +1389,6 @@ const PaymentPrompt: React.FC = () => {
                             Thanh toán an toàn qua VNPay:
                           </p>
                           <ul className="text-xs text-blue-200/80 mt-2 space-y-1 list-disc list-inside">
-                            <li>Hỗ trợ thẻ ATM, thẻ quốc tế, QR Code</li>
                             <li>Thanh toán được xử lý tự động sau khi hoàn tất</li>
                             <li>Bảo mật cao, được VNPay bảo vệ</li>
                           </ul>
