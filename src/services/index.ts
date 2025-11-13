@@ -20,7 +20,6 @@ export { reviewService } from './reviewService'
 export { roleService } from './roleService'
 export { aiHistoryService } from './AIHistoryService'
 export { aiService } from './aiService'
-export { apiKeyService } from './apiKeyService'
 
 // Type exports
 export type * from './authService'
@@ -43,5 +42,4 @@ export type * from './feedbackService'
 export type * from './reviewService'
 export type * from './roleService'
 export type * from './AIHistoryService'
-export type * from './apiKeyService'
 
