@@ -169,7 +169,7 @@ const messages = await messageService.getMessagesByConversationId(conversationId
 ## 🔧 Configuration
 
 Tất cả services sử dụng axios instance từ `src/lib/api.ts`:
-- Base URL: `http://localhost:5217`
+- Base URL: `https://semiyearly-deloise-unsourly.ngrok-free.dev`
 - Automatic JWT token injection
 - Token refresh handling
 - Error handling
