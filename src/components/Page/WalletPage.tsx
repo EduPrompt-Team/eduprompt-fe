@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { mockData, walletApi, transactionApi } from '@/lib/api';
 import { walletService } from '@/services/walletService';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ const WalletPage: React.FC = () => {
   const [needsActivation, setNeedsActivation] = useState(false);
   const [activating, setActivating] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch transactions function - có thể gọi riêng
   const fetchTransactions = async (walletId: number) => {
@@ -65,6 +66,93 @@ const WalletPage: React.FC = () => {
       setTransactions([]);
     }
   };
+
+  // Handle VNPay callback from URL params (if redirected directly to /wallet)
+  useEffect(() => {
+    // Log current URL for debugging
+    console.log('🔍 WalletPage - Current URL:', window.location.href);
+    console.log('🔍 WalletPage - Location search:', location.search);
+    
+    const params = new URLSearchParams(location.search);
+    const responseCode = params.get('vnp_ResponseCode');
+    const txnRef = params.get('vnp_TxnRef');
+    const amount = params.get('vnp_Amount');
+    const transactionNo = params.get('vnp_TransactionNo');
+    const orderInfo = params.get('vnp_OrderInfo');
+    const transactionStatus = params.get('vnp_TransactionStatus');
+    
+    // Log all params for debugging
+    console.log('🔍 WalletPage - All URL params:', {
+      responseCode,
+      txnRef,
+      amount,
+      transactionNo,
+      orderInfo,
+      transactionStatus,
+      allParams: Object.fromEntries(params.entries())
+    });
+    
+    if (responseCode && txnRef) {
+      console.log('🔔 VNPay callback detected in WalletPage:', { responseCode, txnRef, amount });
+      
+      // Call backend to process callback
+      (async () => {
+        try {
+          const callbackData = {
+            vnp_TmnCode: '',
+            vnp_Amount: amount || '',
+            vnp_BankCode: '',
+            vnp_BankTranNo: '',
+            vnp_CardType: '',
+            vnp_PayDate: '',
+            vnp_OrderInfo: orderInfo || '',
+            vnp_TransactionNo: transactionNo || '',
+            vnp_ResponseCode: responseCode,
+            vnp_TransactionStatus: transactionStatus || '',
+            vnp_TxnRef: txnRef,
+            vnp_SecureHash: '',
+          };
+          
+          console.log('📞 Calling backend to process VNPay callback...');
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5217'}/api/payments/vnpay-process-callback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callbackData),
+          });
+          
+          const result = await response.json();
+          console.log('✅ Backend callback result:', result);
+          
+          if (result.success && responseCode === '00') {
+            // Save to localStorage for other checks
+            localStorage.setItem('vnpay_success', JSON.stringify({
+              responseCode,
+              txnRef,
+              amount: result.amount,
+              timestamp: new Date().toISOString(),
+            }));
+            
+            // Refresh wallet immediately
+            await fetchWalletData();
+            
+            // Show success message
+            alert(`✅ Nạp tiền thành công! Số tiền: ${(result.amount || 0).toLocaleString('vi-VN')} VND`);
+          } else {
+            console.error('❌ Payment failed:', result);
+            alert(`❌ Thanh toán thất bại. Mã lỗi: ${responseCode}`);
+          }
+        } catch (error: any) {
+          console.error('❌ Error processing VNPay callback:', error);
+          alert('❌ Lỗi xử lý thanh toán. Vui lòng thử lại.');
+        } finally {
+          // Clean URL params
+          window.history.replaceState({}, '', '/wallet');
+        }
+      })();
+    }
+  }, [location.search]);
 
   useEffect(() => {
     fetchWalletData();
