@@ -11,7 +11,7 @@ app.use(cors())
 
 // Proxy to n8n webhook
 app.use('/api/webhook', createProxyMiddleware({
-  target: 'https://interiorly-pinnatisect-adalyn.ngrok-free.dev',
+  target: 'https://semiyearly-deloise-unsourly.ngrok-free.dev',
   changeOrigin: true,
   pathRewrite: {
     '^/api/webhook': '/webhook'

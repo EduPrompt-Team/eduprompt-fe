@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5217';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'https://semiyearly-deloise-unsourly.ngrok-free.dev';
 
 export const api = axios.create({
   baseURL: API_BASE,
