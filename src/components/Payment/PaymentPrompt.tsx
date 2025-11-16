@@ -859,11 +859,30 @@ const PaymentPrompt: React.FC = () => {
 
   // Handle VNPay return callback
   React.useEffect(() => {
+    // Log current URL for debugging
+    console.log('🔍 PaymentPrompt - Current URL:', window.location.href);
+    console.log('🔍 PaymentPrompt - Location search:', location.search);
+    
     const params = new URLSearchParams(location.search)
     const responseCode = params.get('vnp_ResponseCode')
     const amountParam = params.get('vnp_Amount')
     const transactionNo = params.get('vnp_TransactionNo')
     const txnRef = params.get('vnp_TxnRef')
+    const orderInfo = params.get('vnp_OrderInfo')
+    const transactionStatus = params.get('vnp_TransactionStatus')
+    const secureHash = params.get('vnp_SecureHash')
+    
+    // Log all params for debugging
+    console.log('🔍 PaymentPrompt - All URL params:', {
+      responseCode,
+      txnRef,
+      amountParam,
+      transactionNo,
+      orderInfo,
+      transactionStatus,
+      secureHash,
+      allParams: Object.fromEntries(params.entries())
+    });
     
     if (responseCode) {
       ;(async () => {
@@ -873,6 +892,45 @@ const PaymentPrompt: React.FC = () => {
           
           if (responseCode === '00') {
             const vnd = amountParam ? Number(amountParam) / 100 : 0
+            
+            // Call backend to process callback FIRST
+            console.log('📞 PaymentPrompt - Calling backend to process VNPay callback...');
+            try {
+              const callbackData = {
+                vnp_TmnCode: params.get('vnp_TmnCode') || '',
+                vnp_Amount: amountParam || '',
+                vnp_BankCode: params.get('vnp_BankCode') || '',
+                vnp_BankTranNo: params.get('vnp_BankTranNo') || '',
+                vnp_CardType: params.get('vnp_CardType') || '',
+                vnp_PayDate: params.get('vnp_PayDate') || '',
+                vnp_OrderInfo: orderInfo || '',
+                vnp_TransactionNo: transactionNo || '',
+                vnp_ResponseCode: responseCode,
+                vnp_TransactionStatus: transactionStatus || '',
+                vnp_TxnRef: txnRef || '',
+                vnp_SecureHash: secureHash || '',
+              };
+              
+              const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5217';
+              const response = await fetch(`${apiBaseUrl}/api/payments/vnpay-process-callback`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(callbackData),
+              });
+              
+              const result = await response.json();
+              console.log('✅ PaymentPrompt - Backend callback result:', result);
+              
+              if (!result.success) {
+                console.error('❌ PaymentPrompt - Backend callback failed:', result);
+                throw new Error(result.message || 'Backend callback failed');
+              }
+            } catch (callbackErr: any) {
+              console.error('❌ PaymentPrompt - Error calling backend callback:', callbackErr);
+              // Continue anyway - backend might have processed it via IPN
+            }
             
             // Refresh wallet để hiển thị số tiền mới
             if (currentUser?.userId) {
@@ -886,6 +944,7 @@ const PaymentPrompt: React.FC = () => {
                     balance: newBalance,
                     currency: walletData.currency || 'VND',
                   })
+                  console.log('✅ PaymentPrompt - Wallet refreshed, new balance:', newBalance);
                 }
               } catch (walletErr) {
                 console.error('Wallet refresh error:', walletErr)
